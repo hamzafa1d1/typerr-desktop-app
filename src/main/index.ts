@@ -4,10 +4,12 @@ import {
   shell,
   BrowserWindow,
   ipcMain,
+  globalShortcut,
   Tray,
   Menu,
   nativeImage,
-  systemPreferences
+  systemPreferences,
+  screen
 } from 'electron'
 import icon from '../../resources/icon.png?asset'
 import { watchWindowShortcuts } from './window-shortcuts'
@@ -27,6 +29,8 @@ let statsTimer: ReturnType<typeof setInterval> | null = null
 let accessibilityPoll: ReturnType<typeof setInterval> | null = null
 let appIsQuitting = false
 let coreStarted = false
+let spotlightMode = false
+let previousBounds: Electron.Rectangle | null = null
 
 function isMacAccessibilityOk(): boolean {
   if (process.platform !== 'darwin') return true
@@ -116,24 +120,76 @@ function permissionsHtml(): string {
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0; padding: 28px;
+      margin: 0; padding: 0;
       background: #0a0a0a; color: #fafafa;
       line-height: 1.5;
     }
-    h1 { font-size: 18px; margin: 0 0 12px; }
-    p { color: #a3a3a3; font-size: 13px; margin: 0 0 20px; }
+    main { padding: 28px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    p { color: #a3a3a3; font-size: 13px; margin: 0 0 18px; }
+    .hero {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      margin-bottom: 16px;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .step {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .step h2 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d4d4d8;
+    }
+    .step p { margin: 0; font-size: 12px; color: #a1a1aa; }
     button {
       width: 100%; padding: 12px 16px; border-radius: 10px; border: none;
       font-size: 14px; font-weight: 600; cursor: pointer;
       background: linear-gradient(180deg, #3b82f6, #2563eb); color: white;
     }
     button:hover { filter: brightness(1.06); }
+    .hint { margin-top: 10px; color: #71717a; font-size: 11px; }
   </style>
 </head>
 <body>
-  <h1>Accessibility permission required</h1>
-  <p>Typerr listens to keystrokes locally to compute typing metrics. On macOS, enable Accessibility for this app in System Settings, then return here.</p>
-  <button id="open">Open Accessibility Settings</button>
+  <main>
+    <h1>Enable Accessibility to start coaching</h1>
+    <p>Typerr analyzes typing locally. We need macOS Accessibility access to receive global key events while you work.</p>
+
+    <div class="hero">
+      <strong style="font-size:13px;">Why this matters</strong>
+      <p style="margin:6px 0 0;">Without this permission, Typerr cannot measure WPM or detect correction patterns in real time.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <h2>Step 1</h2>
+        <p>Open macOS Accessibility settings.</p>
+      </div>
+      <div class="step">
+        <h2>Step 2</h2>
+        <p>Enable Typerr in the allowed applications list.</p>
+      </div>
+      <div class="step">
+        <h2>Step 3</h2>
+        <p>Return here. Typerr will detect access automatically.</p>
+      </div>
+    </div>
+
+    <button id="open">Open Accessibility Settings</button>
+    <p class="hint">Privacy note: your raw keystrokes never leave your machine.</p>
+  </main>
   <script>
     const { ipcRenderer } = require('electron');
     document.getElementById('open').onclick = () => ipcRenderer.send('typerr:open-accessibility');
@@ -151,8 +207,8 @@ function createPermissionsWindow(): void {
   ipcMain.on('typerr:open-accessibility', openAccessibility)
 
   permissionsWindow = new BrowserWindow({
-    width: 400,
-    height: 280,
+    width: 520,
+    height: 520,
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -199,6 +255,10 @@ function createTray(): void {
       click: () => showDashboard()
     },
     {
+      label: 'Summon Spotlight (Cmd+Opt+T)',
+      click: () => toggleSpotlightDashboard()
+    },
+    {
       label: 'Open Accessibility Settings',
       visible: process.platform === 'darwin',
       click: () => void shell.openExternal(ACCESSIBILITY_URL)
@@ -220,10 +280,48 @@ function createTray(): void {
 
 function showDashboard(): void {
   if (!mainWindow || mainWindow.isDestroyed()) return
+  if (spotlightMode) {
+    restoreDashboardWindow()
+  }
   if (mainWindow.isVisible()) {
     mainWindow.hide()
     return
   }
+  mainWindow.show()
+  mainWindow.focus()
+  broadcastStats()
+}
+
+function restoreDashboardWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (previousBounds) {
+    mainWindow.setBounds(previousBounds)
+  }
+  mainWindow.setAlwaysOnTop(false)
+  mainWindow.setVisibleOnAllWorkspaces(false)
+  spotlightMode = false
+}
+
+function toggleSpotlightDashboard(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+
+  if (spotlightMode) {
+    restoreDashboardWindow()
+    mainWindow.hide()
+    return
+  }
+
+  previousBounds = mainWindow.getBounds()
+  const { workArea } = screen.getPrimaryDisplay()
+  const width = Math.min(940, Math.max(760, Math.floor(workArea.width * 0.72)))
+  const height = Math.min(650, Math.max(520, Math.floor(workArea.height * 0.72)))
+  const x = Math.round(workArea.x + (workArea.width - width) / 2)
+  const y = Math.round(workArea.y + Math.max(36, (workArea.height - height) / 5))
+
+  mainWindow.setBounds({ x, y, width, height })
+  mainWindow.setAlwaysOnTop(true, 'floating')
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  spotlightMode = true
   mainWindow.show()
   mainWindow.focus()
   broadcastStats()
@@ -265,6 +363,10 @@ app.whenReady().then(() => {
     watchWindowShortcuts(window)
   })
 
+  globalShortcut.register('CommandOrControl+Alt+T', () => {
+    toggleSpotlightDashboard()
+  })
+
   ipcMain.handle('typerr:get-initial-stats', () => {
     if (!monitor) {
       return { wpm: 0, lastError: null, recentErrors: [] as unknown[] }
@@ -293,6 +395,7 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  globalShortcut.unregisterAll()
   appIsQuitting = true
   stopStatsLoop()
   stopAccessibilityPoll()

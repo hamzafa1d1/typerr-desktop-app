@@ -12,6 +12,12 @@
     --muted-foreground: 0 0% 55%;
     --border: 0 0% 14%;
     --radius: 0.75rem;
+    --glass-bg: rgba(18, 18, 20, 0.62);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --elevation-active: 0 28px 60px rgba(0, 0, 0, 0.38);
+    --elevation-rest: 0 14px 28px rgba(0, 0, 0, 0.22);
+    --motion-fast: 160ms;
+    --motion-standard: 240ms;
   }
 
   body {
@@ -24,5 +30,16 @@
 
   #root {
     @apply min-h-screen;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

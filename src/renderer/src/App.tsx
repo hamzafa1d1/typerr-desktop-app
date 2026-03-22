@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { AuditAnalysis, TyperrStatsPayload } from '../../preload/typerr-types'
 import { AppHeader } from '@/components/dashboard/AppHeader'
 import { AuditIntelligenceCard } from '@/components/dashboard/AuditIntelligenceCard'
@@ -8,12 +8,18 @@ import { ImprovementFocusCard } from '@/components/dashboard/ImprovementFocusCar
 import { KpiGrid } from '@/components/dashboard/KpiGrid'
 import { TrackingTestCard } from '@/components/dashboard/TrackingTestCard'
 import { WpmHeroCard } from '@/components/dashboard/WpmHeroCard'
+import { motionPresets } from '@/lib/motion'
 import { buildImprovementFocus, buildTypingKpis } from '@/lib/typing-insights'
+import { uxFlags } from '@/lib/ux-flags'
 import typerrIcon from '../typerr-icon.png'
 
-const SHOW_TEST_CARD = true
-
 export default function App(): React.JSX.Element {
+  const reducedMotion = useReducedMotion()
+  const shouldReduceMotion = Boolean(reducedMotion) || !uxFlags.smartMotion
+  const pageMotion = motionPresets.page(shouldReduceMotion)
+  const containerVariants = motionPresets.cardStagger(shouldReduceMotion)
+  const itemVariants = motionPresets.cardItem(shouldReduceMotion)
+
   const [stats, setStats] = useState<TyperrStatsPayload>({
     wpm: 0,
     lastError: null,
@@ -62,9 +68,9 @@ export default function App(): React.JSX.Element {
   return (
     <motion.div
       className="h-screen overflow-y-auto px-4 pb-8 pt-8 sm:px-6"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      initial={pageMotion.initial}
+      animate={pageMotion.animate}
+      transition={pageMotion.transition}
     >
       <div className="relative mx-auto w-full max-w-6xl">
         <AppHeader iconSrc={typerrIcon} />
@@ -78,29 +84,77 @@ export default function App(): React.JSX.Element {
           aria-hidden
         />
 
-        <div className="relative z-10 grid items-start gap-5 xl:grid-cols-12">
-          <section className="space-y-5 xl:col-span-8">
-            <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} />
-            <ImprovementFocusCard focus={focus} />
-            <AuditIntelligenceCard
-              analysis={analysis}
-              loading={analysisLoading}
-              error={analysisError}
-              onAnalyze={runAuditAnalysis}
-            />
-            <TrackingTestCard enabled={SHOW_TEST_CARD} />
-          </section>
+        {uxFlags.dashboardLayout === 'bento' ? (
+          <motion.div
+            className="relative z-10 grid items-start gap-5 xl:grid-cols-12"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            <motion.section variants={itemVariants} className="xl:col-span-7">
+              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} />
+            </motion.section>
 
-          <aside className="space-y-5 xl:col-span-4">
-            <KpiGrid items={kpis} />
-            <CorrectionsFeedCard rows={stats.recentErrors} />
-            {stats.lastError ? (
-              <p className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[0.7rem] leading-relaxed text-white/55">
-                Last flagged: <span className="text-white/75">{stats.lastError.mistyped_word}</span>
-              </p>
-            ) : null}
-          </aside>
-        </div>
+            <motion.section variants={itemVariants} className="xl:col-span-5">
+              <KpiGrid items={kpis} />
+            </motion.section>
+
+            <motion.section variants={itemVariants} className="xl:col-span-7">
+              <AuditIntelligenceCard
+                analysis={analysis}
+                loading={analysisLoading}
+                error={analysisError}
+                onAnalyze={runAuditAnalysis}
+              />
+            </motion.section>
+
+            <motion.section variants={itemVariants} className="xl:col-span-5">
+              <CorrectionsFeedCard rows={stats.recentErrors} />
+            </motion.section>
+
+            <motion.section variants={itemVariants} className="xl:col-span-7">
+              <ImprovementFocusCard focus={focus} />
+            </motion.section>
+
+            <motion.section variants={itemVariants} className="xl:col-span-5">
+              <TrackingTestCard enabled={uxFlags.showTrackingTestCard} />
+              {stats.lastError ? (
+                <p className="mt-5 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[0.7rem] leading-relaxed text-white/55">
+                  Last flagged: <span className="text-white/75">{stats.lastError.mistyped_word}</span>
+                </p>
+              ) : null}
+            </motion.section>
+          </motion.div>
+        ) : (
+          <motion.div
+            className="relative z-10 grid items-start gap-5 xl:grid-cols-12"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            <motion.section variants={itemVariants} className="space-y-5 xl:col-span-8">
+              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} />
+              <ImprovementFocusCard focus={focus} />
+              <AuditIntelligenceCard
+                analysis={analysis}
+                loading={analysisLoading}
+                error={analysisError}
+                onAnalyze={runAuditAnalysis}
+              />
+              <TrackingTestCard enabled={uxFlags.showTrackingTestCard} />
+            </motion.section>
+
+            <motion.aside variants={itemVariants} className="space-y-5 xl:col-span-4">
+              <KpiGrid items={kpis} />
+              <CorrectionsFeedCard rows={stats.recentErrors} />
+              {stats.lastError ? (
+                <p className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[0.7rem] leading-relaxed text-white/55">
+                  Last flagged: <span className="text-white/75">{stats.lastError.mistyped_word}</span>
+                </p>
+              ) : null}
+            </motion.aside>
+          </motion.div>
+        )}
       </div>
     </motion.div>
   )

@@ -1,10 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { TyperrStatsPayload } from './typerr-types'
+import type { AuditAnalysis, AuditAnalysisRequest, TyperrStatsPayload } from './typerr-types'
 
 const typerr = {
   getInitialStats: (): Promise<TyperrStatsPayload> =>
     ipcRenderer.invoke('typerr:get-initial-stats'),
+  analyzeAudit: (request?: AuditAnalysisRequest): Promise<AuditAnalysis> =>
+    ipcRenderer.invoke('typerr:analyze-audit', request),
   onStats: (cb: (payload: TyperrStatsPayload) => void): (() => void) => {
     const handler = (_evt: Electron.IpcRendererEvent, payload: TyperrStatsPayload): void =>
       cb(payload)

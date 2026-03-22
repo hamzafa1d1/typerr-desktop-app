@@ -9,10 +9,11 @@ import {
   nativeImage,
   systemPreferences
 } from 'electron'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { watchWindowShortcuts } from './window-shortcuts'
 import { TypingMonitor } from './typing-monitor'
 import { closeDb, endSession, getDb, recentErrors, startSession } from './db'
+import { analyzeAudit } from './audit-analysis'
 
 const ACCESSIBILITY_URL =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
@@ -58,8 +59,11 @@ function stopStatsLoop(): void {
 function createMainWindow(): void {
   if (mainWindow && !mainWindow.isDestroyed()) return
   mainWindow = new BrowserWindow({
-    width: 440,
-    height: 560,
+    title: 'Typerr',
+    width: 1080,
+    height: 760,
+    minWidth: 900,
+    minHeight: 640,
     show: false,
     ...(process.platform === 'darwin'
       ? {
@@ -71,7 +75,7 @@ function createMainWindow(): void {
       : {}),
     autoHideMenuBar: true,
     backgroundColor: '#0A0A0A',
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform !== 'darwin' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -95,7 +99,7 @@ function createMainWindow(): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
@@ -247,14 +251,18 @@ function waitForAccessibilityThenStart(): void {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.typerr.app')
+  app.setName('Typerr')
+
+  if (process.platform === 'win32') {
+    app.setAppUserModelId(!app.isPackaged ? process.execPath : 'com.typerr.app')
+  }
 
   if (process.platform === 'darwin' && app.dock) {
     app.dock.hide()
   }
 
   app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    watchWindowShortcuts(window)
   })
 
   ipcMain.handle('typerr:get-initial-stats', () => {
@@ -268,6 +276,10 @@ app.whenReady().then(() => {
       timestamp: r.timestamp
     }))
     return { wpm, lastError, recentErrors: errors }
+  })
+
+  ipcMain.handle('typerr:analyze-audit', async (_evt, request) => {
+    return analyzeAudit(request)
   })
 
   waitForAccessibilityThenStart()

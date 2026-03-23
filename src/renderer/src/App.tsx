@@ -33,7 +33,7 @@ export default function App(): React.JSX.Element {
   const [analysis, setAnalysis] = useState<AuditAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
-  const [refreshIntervalMs, setRefreshIntervalMs] = useState(60 * 60 * 1000)
+  const [refreshIntervalMs, setRefreshIntervalMs] = useState(10 * 1000)
 
   const kpis = useMemo(
     () => buildTypingKpis(stats, wpmHistory, lastStatsAt, refreshIntervalMs),

@@ -173,6 +173,28 @@ export function FeedbackHubCard({
               ))}
             </ul>
           </details>
+
+          <details className="group rounded-md border border-border/60 bg-muted/40 px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
+              <span>Top mistyped words</span>
+              <ChevronDown className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" />
+            </summary>
+            {mistakeDetails.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">No consistent typo pattern detected yet.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {mistakeDetails.slice(0, 10).map((item) => (
+                  <li
+                    key={`mistyped-${item.mistyped_word}-${item.suggested_word}`}
+                    className="flex items-center justify-between rounded-md border border-border/60 bg-background/60 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium text-foreground">{item.mistyped_word}</span>
+                    <span className="text-xs text-muted-foreground">x{item.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
         </div>
       </CardContent>
     </Card>

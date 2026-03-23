@@ -36,7 +36,7 @@ let tray: Tray | null = null
 let monitor: TypingMonitor | null = null
 let sessionId = 0
 let statsTimer: ReturnType<typeof setInterval> | null = null
-const DEFAULT_STATS_INTERVAL_MS = 60 * 60 * 1000
+const DEFAULT_STATS_INTERVAL_MS = 10 * 1000
 const MIN_STATS_INTERVAL_MS = 1000
 const MAX_STATS_INTERVAL_MS = 60 * 60 * 1000
 let statsIntervalMs = DEFAULT_STATS_INTERVAL_MS
@@ -90,6 +90,7 @@ function setStatsInterval(ms: number): number {
   const next = Math.min(Math.max(Math.floor(ms), MIN_STATS_INTERVAL_MS), MAX_STATS_INTERVAL_MS)
   statsIntervalMs = next
   startStatsLoop()
+  broadcastStats()
   return statsIntervalMs
 }
 

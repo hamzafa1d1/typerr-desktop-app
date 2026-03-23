@@ -133,33 +133,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-border/60 space-y-3">
-        <motion.div
-          whileHover={{ borderColor: 'rgba(148, 163, 184, 0.4)' }}
-          className="rounded-lg p-3.5 backdrop-blur-sm border border-border/60 transition-all duration-300 bg-muted/40"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold text-muted-foreground">AI Report Ready</span>
-            </div>
-            <motion.div
-              className="w-3 h-3 rounded-full bg-teal-500"
-              animate={{ scale: [1, 1.15, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </div>
-        </motion.div>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-full py-2.5 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-all duration-300 shadow-lg shadow-teal-500/30 uppercase tracking-wider"
-          onClick={() => handleNavigate('feedback')}
-        >
-          Open Feedback Hub
-        </motion.button>
-      </div>
     </motion.div>
   )
 }

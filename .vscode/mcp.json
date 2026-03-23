@@ -15,6 +15,14 @@
         "@modelcontextprotocol/server-docs",
         "https://ui.shadcn.com/docs"
       ]
+    },
+    "gemini-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-docs",
+        "https://ai.google.dev/gemini-api/docs"
+      ]
     }
   }
 }

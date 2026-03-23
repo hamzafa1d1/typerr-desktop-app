@@ -2,12 +2,14 @@ import { appendFileSync, mkdirSync } from 'fs'
 import { Notification, app } from 'electron'
 import { GlobalKeyboardListener } from 'node-global-key-listener'
 import { join } from 'path'
-import { insertError, insertMasteredWord } from './db'
+import { getMasteredWord, insertError, insertMasteredWord, insertSuggestion } from './db'
+import { isDictionaryWord, normalizeWord, suggestWord } from './word-suggestions'
 
 const WINDOW_MS = 60_000
 const CHARS_PER_WORD = 5
 const KEY_BUFFER_MAX = 20
 const DICTIONARY_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+const MIN_SUGGESTION_SCORE = 0.78
 
 type DownMap = Record<string, boolean>
 
@@ -71,6 +73,7 @@ export class TypingMonitor {
   private jsonlPath: string
   private correctionEvents = new Map<string, number[]>()
   private notifiedWords = new Map<string, number>()
+  private cachedDefinitions = new Set<string>()
   private wpmSamples: number[] = []
   private running = false
 
@@ -173,24 +176,37 @@ export class TypingMonitor {
       return
     }
 
-    const mistyped = candidate
+    const normalized = normalizeWord(candidate)
     const corrected = ''
-    this.lastError = {
-      mistyped_word: mistyped,
-      corrected_word: corrected,
-      timestamp: now
-    }
+    const suggestion = normalized ? suggestWord(normalized) : null
+    const shouldTrack =
+      !!normalized &&
+      (isDictionaryWord(normalized) ||
+        (!!suggestion && suggestion.score >= MIN_SUGGESTION_SCORE))
 
-    insertError(mistyped, corrected || null, now)
-    this.appendJsonl({ mistyped_word: mistyped, corrected_word: corrected, timestamp: now })
+    if (shouldTrack && normalized) {
+      this.lastError = {
+        mistyped_word: normalized,
+        corrected_word: corrected,
+        timestamp: now
+      }
+
+      insertError(normalized, corrected || null, now)
+      this.appendJsonl({ mistyped_word: normalized, corrected_word: corrected, timestamp: now })
+
+      if (suggestion && suggestion.score >= MIN_SUGGESTION_SCORE) {
+        insertSuggestion(normalized, suggestion.suggested, suggestion.score, suggestion.method)
+        void this.ensureDefinition(suggestion.suggested)
+      }
+
+      this.trackCorrections(normalized, now)
+    }
 
     if (this.currentWord.length > 0) {
       this.currentWord = this.currentWord.slice(0, -1)
     } else if (this.lastCompletedWord) {
       this.lastCompletedWord = this.lastCompletedWord.slice(0, -1)
     }
-
-    this.trackCorrections(mistyped, now)
   }
 
   private appendJsonl(row: object): void {
@@ -249,6 +265,28 @@ export class TypingMonitor {
     } catch (e) {
       console.error('[Typerr] dictionary fetch', e)
       this.notifiedWords.delete(key)
+    }
+  }
+
+  private async ensureDefinition(word: string): Promise<void> {
+    const key = word.toLowerCase()
+    if (this.cachedDefinitions.has(key)) return
+    if (getMasteredWord(key)) {
+      this.cachedDefinitions.add(key)
+      return
+    }
+    this.cachedDefinitions.add(key)
+    try {
+      const res = await fetch(`${DICTIONARY_URL}${encodeURIComponent(key)}`)
+      if (!res.ok) return
+      const data = (await res.json()) as Array<{
+        meanings?: Array<{ definitions?: Array<{ definition?: string }> }>
+      }>
+      const def =
+        data[0]?.meanings?.[0]?.definitions?.[0]?.definition ?? 'Definition unavailable.'
+      insertMasteredWord(key, def, `Common correction for "${key}".`)
+    } catch (e) {
+      console.error('[Typerr] dictionary fetch', e)
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { join } from 'path'
 import {
   app,
@@ -14,7 +15,16 @@ import {
 import icon from '../../resources/icon.png?asset'
 import { watchWindowShortcuts } from './window-shortcuts'
 import { TypingMonitor } from './typing-monitor'
-import { closeDb, endSession, getDb, recentErrors, startSession } from './db'
+import {
+  closeDb,
+  correctionsSince,
+  endSession,
+  getDb,
+  recentErrors,
+  startSession,
+  topMistakeDetails,
+  topSuggestions
+} from './db'
 import { analyzeAudit } from './audit-analysis'
 
 const ACCESSIBILITY_URL =
@@ -49,7 +59,18 @@ function broadcastStats(): void {
     corrected_word: r.corrected_word || '—',
     timestamp: r.timestamp
   }))
-  mainWindow.webContents.send('typerr:stats', { wpm, lastError, recentErrors: errors })
+  const suggestions = topSuggestions(6)
+  const hourAgo = Date.now() - 60 * 60 * 1000
+  const correctionsLastHour = correctionsSince(hourAgo)
+  const mistakeDetails = topMistakeDetails(10)
+  mainWindow.webContents.send('typerr:stats', {
+    wpm,
+    lastError,
+    recentErrors: errors,
+    suggestedCorrections: suggestions,
+    correctionsLastHour,
+    mistakeDetails
+  })
 }
 
 function startStatsLoop(): void {
@@ -381,7 +402,14 @@ app.whenReady().then(() => {
 
   ipcMain.handle('typerr:get-initial-stats', () => {
     if (!monitor) {
-      return { wpm: 0, lastError: null, recentErrors: [] as unknown[] }
+      return {
+        wpm: 0,
+        lastError: null,
+        recentErrors: [] as unknown[],
+        suggestedCorrections: [],
+        correctionsLastHour: 0,
+        mistakeDetails: []
+      }
     }
     const { wpm, lastError } = monitor.getLiveStats()
     const errors = recentErrors(5).map((r) => ({
@@ -389,7 +417,18 @@ app.whenReady().then(() => {
       corrected_word: r.corrected_word || '—',
       timestamp: r.timestamp
     }))
-    return { wpm, lastError, recentErrors: errors }
+    const suggestions = topSuggestions(6)
+    const hourAgo = Date.now() - 60 * 60 * 1000
+    const correctionsLastHour = correctionsSince(hourAgo)
+    const mistakeDetails = topMistakeDetails(10)
+    return {
+      wpm,
+      lastError,
+      recentErrors: errors,
+      suggestedCorrections: suggestions,
+      correctionsLastHour,
+      mistakeDetails
+    }
   })
 
   ipcMain.handle('typerr:analyze-audit', async (_evt, request) => {

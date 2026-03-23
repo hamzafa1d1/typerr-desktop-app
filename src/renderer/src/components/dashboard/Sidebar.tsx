@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, Activity, TrendingUp, Target, Clock, Sparkles } from 'lucide-react'
+import { BarChart3, Activity, TrendingUp, Clock, Sparkles, MessageSquareText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type NavItem = {
@@ -14,8 +14,7 @@ export function Sidebar() {
     () => [
       { id: 'overview', label: 'Overview', icon: BarChart3 },
       { id: 'kpis', label: 'KPIs', icon: Activity },
-      { id: 'audit', label: 'Audit', icon: Target },
-      { id: 'corrections', label: 'Corrections', icon: TrendingUp },
+      { id: 'feedback', label: 'Feedback Hub', icon: MessageSquareText },
       { id: 'focus', label: 'Focus Plan', icon: Clock },
       { id: 'progress', label: 'Progress', icon: TrendingUp }
     ],
@@ -65,7 +64,7 @@ export function Sidebar() {
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="w-64 border-r border-border/60 bg-card/70 backdrop-blur-md flex flex-col h-full shadow-2xl shadow-black/10"
+      className="w-64 border-r border-border/60 bg-card/70 backdrop-blur-md flex flex-col h-full pt-[calc(2rem+env(safe-area-inset-top))] shadow-2xl shadow-black/10"
     >
       {/* Header */}
       <div className="p-6 flex items-center justify-between border-b border-border/60">
@@ -88,7 +87,7 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto px-3 py-6 space-y-6">
         {/* Primary Action */}
         <Button
-          onClick={() => handleNavigate('audit')}
+          onClick={() => handleNavigate('feedback')}
           className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:border-teal-500/70 shadow-lg shadow-teal-500/10"
           variant="ghost"
         >
@@ -98,7 +97,7 @@ export function Sidebar() {
           >
             <Sparkles className="w-5 h-5" strokeWidth={2} />
           </motion.div>
-          <span className="text-sm font-bold tracking-wide">Generate AI Report</span>
+          <span className="text-sm font-bold tracking-wide">Open Feedback Hub</span>
         </Button>
 
         {/* Dashboard Section */}
@@ -156,9 +155,9 @@ export function Sidebar() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           className="w-full py-2.5 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-all duration-300 shadow-lg shadow-teal-500/30 uppercase tracking-wider"
-          onClick={() => handleNavigate('audit')}
+          onClick={() => handleNavigate('feedback')}
         >
-          Generate AI Report
+          Open Feedback Hub
         </motion.button>
       </div>
     </motion.div>

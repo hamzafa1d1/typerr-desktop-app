@@ -4,10 +4,29 @@ export type TyperrErrorRow = {
   timestamp: number
 }
 
+export type TyperrSuggestionRow = {
+  mistyped_word: string
+  suggested_word: string
+  score: number
+  count: number
+}
+
+export type TyperrMistakeDetailRow = {
+  mistyped_word: string
+  suggested_word: string
+  score: number
+  count: number
+  definition: string | null
+  tip: string | null
+}
+
 export type TyperrStatsPayload = {
   wpm: number
   lastError: TyperrErrorRow | null
   recentErrors: TyperrErrorRow[]
+  suggestedCorrections: TyperrSuggestionRow[]
+  correctionsLastHour: number
+  mistakeDetails: TyperrMistakeDetailRow[]
 }
 
 export type AuditSnapshot = {
@@ -17,6 +36,7 @@ export type AuditSnapshot = {
   uniqueMistypedWords: number
   topMistypedWords: Array<{ word: string; count: number }>
   masteredWordsCount: number
+  suggestedCorrections: TyperrSuggestionRow[]
 }
 
 export type AuditAnalysis = {
@@ -24,7 +44,7 @@ export type AuditAnalysis = {
   strengths: string[]
   risks: string[]
   nextActions: string[]
-  generatedBy: 'heuristic' | 'local-llm'
+  generatedBy: 'heuristic' | 'local-llm' | 'gemini-api'
   model: string
   snapshot: AuditSnapshot
 }

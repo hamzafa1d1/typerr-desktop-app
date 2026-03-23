@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { AuditAnalysis, TyperrStatsPayload } from '../../preload/typerr-types'
 import { AppHeader } from '@/components/dashboard/AppHeader'
-import { AuditIntelligenceCard } from '@/components/dashboard/AuditIntelligenceCard'
-import { CorrectionsFeedCard } from '@/components/dashboard/CorrectionsFeedCard'
 import { DailyProgressChart } from '@/components/dashboard/DailyProgressChart'
+import { FeedbackHubCard } from '@/components/dashboard/FeedbackHubCard'
 import { ImprovementFocusCard } from '@/components/dashboard/ImprovementFocusCard'
 import { KpiGrid } from '@/components/dashboard/KpiGrid'
 import { Sidebar } from '@/components/dashboard/Sidebar'
@@ -24,7 +23,10 @@ export default function App(): React.JSX.Element {
   const [stats, setStats] = useState<TyperrStatsPayload>({
     wpm: 0,
     lastError: null,
-    recentErrors: []
+    recentErrors: [],
+    suggestedCorrections: [],
+    correctionsLastHour: 0,
+    mistakeDetails: []
   })
   const [lastStatsAt, setLastStatsAt] = useState<number | null>(null)
   const [wpmHistory, setWpmHistory] = useState<number[]>([])
@@ -75,7 +77,7 @@ export default function App(): React.JSX.Element {
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
       <motion.div
-        className="flex-1 overflow-y-auto px-6 pb-8 pt-8 sm:px-8 scroll-smooth"
+        className="flex-1 overflow-y-auto px-6 pb-8 pt-[calc(2rem+env(safe-area-inset-top))] sm:px-8 scroll-smooth"
         data-scroll-container="main"
         initial={pageMotion.initial}
         animate={pageMotion.animate}
@@ -102,36 +104,30 @@ export default function App(): React.JSX.Element {
             animate="show"
           >
             <motion.section id="overview" variants={itemVariants} className="xl:col-span-7 scroll-mt-24">
-              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} />
+              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} wpmHistory={wpmHistory} />
             </motion.section>
 
             <motion.section id="kpis" variants={itemVariants} className="xl:col-span-5 scroll-mt-24">
               <KpiGrid items={kpis} />
             </motion.section>
 
-            <motion.section id="audit" variants={itemVariants} className="xl:col-span-7 scroll-mt-24">
-              <AuditIntelligenceCard
+            <motion.section id="feedback" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">
+              <FeedbackHubCard
                 analysis={analysis}
                 loading={analysisLoading}
                 error={analysisError}
                 onAnalyze={runAuditAnalysis}
+                rows={stats.recentErrors}
+                lastError={stats.lastError}
+                suggestions={stats.suggestedCorrections}
+                correctionsLastHour={stats.correctionsLastHour}
+                mistakeDetails={stats.mistakeDetails}
+                wpm={stats.wpm}
               />
-            </motion.section>
-
-            <motion.section id="corrections" variants={itemVariants} className="xl:col-span-5 scroll-mt-24">
-              <CorrectionsFeedCard rows={stats.recentErrors} />
             </motion.section>
 
             <motion.section id="focus" variants={itemVariants} className="xl:col-span-7 scroll-mt-24">
               <ImprovementFocusCard focus={focus} />
-            </motion.section>
-
-            <motion.section variants={itemVariants} className="xl:col-span-5">
-              {stats.lastError ? (
-                <p className="mt-5 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-[0.7rem] leading-relaxed text-muted-foreground backdrop-blur-sm">
-                  Last flagged: <span className="text-foreground/80">{stats.lastError.mistyped_word}</span>
-                </p>
-              ) : null}
             </motion.section>
 
             <motion.section id="progress" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">
@@ -146,24 +142,24 @@ export default function App(): React.JSX.Element {
             animate="show"
           >
             <motion.section id="overview" variants={itemVariants} className="space-y-5 xl:col-span-8 scroll-mt-24">
-              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} />
+              <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} wpmHistory={wpmHistory} />
               <ImprovementFocusCard focus={focus} />
-              <AuditIntelligenceCard
+              <FeedbackHubCard
                 analysis={analysis}
                 loading={analysisLoading}
                 error={analysisError}
                 onAnalyze={runAuditAnalysis}
+                rows={stats.recentErrors}
+                lastError={stats.lastError}
+                suggestions={stats.suggestedCorrections}
+                correctionsLastHour={stats.correctionsLastHour}
+                mistakeDetails={stats.mistakeDetails}
+                wpm={stats.wpm}
               />
             </motion.section>
 
             <motion.aside id="kpis" variants={itemVariants} className="space-y-5 xl:col-span-4 scroll-mt-24">
               <KpiGrid items={kpis} />
-              <CorrectionsFeedCard rows={stats.recentErrors} />
-              {stats.lastError ? (
-                <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-[0.7rem] leading-relaxed text-muted-foreground backdrop-blur-sm">
-                  Last flagged: <span className="text-foreground/80">{stats.lastError.mistyped_word}</span>
-                </p>
-              ) : null}
             </motion.aside>
 
             <motion.section id="progress" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">

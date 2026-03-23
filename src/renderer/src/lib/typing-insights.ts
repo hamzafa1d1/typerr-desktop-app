@@ -31,6 +31,11 @@ function correctionsInWindow(recentErrors: TyperrErrorRow[], now: number, ms: nu
   return recentErrors.filter((row) => now - row.timestamp <= ms).length
 }
 
+function recentSample(values: number[], count: number): number[] {
+  if (values.length <= count) return values
+  return values.slice(-count)
+}
+
 export function buildTypingKpis(
   stats: TyperrStatsPayload,
   wpmHistory: number[],
@@ -38,10 +43,20 @@ export function buildTypingKpis(
   refreshIntervalMs: number
 ): TypingKpi[] {
   const now = Date.now()
-  const correctionBursts = correctionsInWindow(stats.recentErrors, now, 60_000)
-  const rhythmVariance = variance(wpmHistory)
+  const correctionWindowMs = 60_000
+  const correctionBursts = correctionsInWindow(stats.recentErrors, now, correctionWindowMs)
+  const correctionRate = correctionBursts / (correctionWindowMs / 60_000)
+
+  const rhythmSample = recentSample(wpmHistory, 12)
+  const rhythmVariance = variance(rhythmSample)
   const rhythmState =
-    rhythmVariance < 12 ? 'steady' : rhythmVariance < 35 ? 'fluctuating' : 'unstable'
+    rhythmSample.length < 6
+      ? 'stabilizing'
+      : rhythmVariance < 10
+        ? 'steady'
+        : rhythmVariance < 28
+          ? 'fluctuating'
+          : 'unstable'
 
   const onlineWindow = Math.max(4_500, refreshIntervalMs + 2_000)
   const online = lastStatsAt !== null && now - lastStatsAt <= onlineWindow
@@ -56,14 +71,14 @@ export function buildTypingKpis(
     {
       label: 'Rhythm',
       value: rhythmState,
-      hint: 'Based on the last updates',
+      hint: rhythmSample.length < 6 ? 'Waiting for more samples' : 'Based on recent updates',
       tone: rhythmState === 'steady' ? 'good' : rhythmState === 'unstable' ? 'warn' : 'neutral'
     },
     {
       label: 'Corrections / min',
-      value: String(correctionBursts),
-      hint: 'Recent backspace-driven edits',
-      tone: correctionBursts >= 3 ? 'warn' : correctionBursts === 0 ? 'good' : 'neutral'
+      value: correctionRate < 10 ? correctionRate.toFixed(1) : Math.round(correctionRate).toString(),
+      hint: 'Rolling 60s backspace rate',
+      tone: correctionRate >= 3 ? 'warn' : correctionRate === 0 ? 'good' : 'neutral'
     },
     {
       label: 'Tracking Status',

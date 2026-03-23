@@ -6,9 +6,12 @@ import { formatTime } from '@/lib/time'
 type WpmHeroCardProps = {
   wpm: number
   lastStatsAt: number | null
+  wpmHistory: number[]
 }
 
-export function WpmHeroCard({ wpm, lastStatsAt }: WpmHeroCardProps): React.JSX.Element {
+export function WpmHeroCard({ wpm, lastStatsAt, wpmHistory }: WpmHeroCardProps): React.JSX.Element {
+  const bars = wpmHistory.slice(-8)
+  const maxBar = Math.max(1, ...bars)
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -37,7 +40,7 @@ export function WpmHeroCard({ wpm, lastStatsAt }: WpmHeroCardProps): React.JSX.E
           </div>
         </CardHeader>
 
-        <CardContent className="relative z-10 flex flex-col items-center pb-10 pt-2 sm:pb-12">
+        <CardContent className="relative z-10 flex flex-col items-center pb-8 pt-2 sm:pb-10">
           <motion.span
             key={Math.floor(wpm / 10)}
             initial={{ opacity: 0.4, scale: 0.95, y: 5 }}
@@ -47,6 +50,29 @@ export function WpmHeroCard({ wpm, lastStatsAt }: WpmHeroCardProps): React.JSX.E
           >
             {Math.round(wpm)}
           </motion.span>
+
+          <div className="mt-5 w-full max-w-sm rounded-2xl border border-border/60 bg-background/60 px-4 py-3 shadow-inner">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Real-time</span>
+              <span className="text-xs font-semibold text-foreground/80">WPM</span>
+            </div>
+            <div className="mt-3 flex items-end gap-2">
+              {bars.length === 0
+                ? Array.from({ length: 8 }).map((_, idx) => (
+                    <div
+                      key={`bar-empty-${idx}`}
+                      className="h-6 w-5 rounded-md bg-muted/50"
+                    />
+                  ))
+                : bars.map((value, idx) => (
+                    <div
+                      key={`bar-${idx}`}
+                      className="w-5 rounded-md bg-gradient-to-t from-indigo-500/80 via-teal-500/80 to-sky-400/80 shadow-sm"
+                      style={{ height: `${Math.max(8, Math.round((value / maxBar) * 48))}px` }}
+                    />
+                  ))}
+            </div>
+          </div>
           
           <div className="mt-6 flex gap-6 text-center">
             <motion.div 

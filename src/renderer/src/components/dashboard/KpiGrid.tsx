@@ -40,6 +40,7 @@ function parseKpiValue(item: TypingKpi): number {
     if (normalized.includes('steady')) return 3
     if (normalized.includes('fluctuating')) return 2
     if (normalized.includes('unstable')) return 1
+    if (normalized.includes('stabilizing')) return 2
   }
 
   return Number.isNaN(numeric) ? 0 : numeric

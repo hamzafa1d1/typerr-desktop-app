@@ -29,6 +29,15 @@ export function getDb(): Database.Database {
         tip TEXT,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS error_suggestions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mistyped_word TEXT NOT NULL,
+        suggested_word TEXT NOT NULL,
+        score REAL NOT NULL,
+        method TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_error_suggestions_mistyped ON error_suggestions (mistyped_word);
     `)
   }
   return db
@@ -71,6 +80,84 @@ export function insertMasteredWord(word: string, definition: string, tip: string
      VALUES (?, ?, ?, ?)
      ON CONFLICT(word) DO UPDATE SET definition = excluded.definition, tip = excluded.tip, created_at = excluded.created_at`
   ).run(word.toLowerCase(), definition, tip, Date.now())
+}
+
+export function getMasteredWord(word: string): { definition: string; tip: string } | null {
+  const row = getDb()
+    .prepare('SELECT definition, tip FROM mastered_words WHERE word = ?')
+    .get(word.toLowerCase()) as { definition: string; tip: string } | undefined
+  return row ?? null
+}
+
+export function insertSuggestion(
+  mistyped: string,
+  suggested: string,
+  score: number,
+  method: string
+): void {
+  const d = getDb()
+  d.prepare(
+    `INSERT INTO error_suggestions (mistyped_word, suggested_word, score, method, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(mistyped.toLowerCase(), suggested.toLowerCase(), score, method, Date.now())
+}
+
+export function topSuggestions(limit: number): Array<{
+  mistyped_word: string
+  suggested_word: string
+  score: number
+  count: number
+}> {
+  return getDb()
+    .prepare(
+      `SELECT mistyped_word, suggested_word,
+              AVG(score) as score,
+              COUNT(*) as count
+       FROM error_suggestions
+       GROUP BY mistyped_word, suggested_word
+       ORDER BY count DESC, score DESC
+       LIMIT ?`
+    )
+    .all(limit) as Array<{ mistyped_word: string; suggested_word: string; score: number; count: number }>
+}
+
+export function topMistakeDetails(limit: number): Array<{
+  mistyped_word: string
+  suggested_word: string
+  score: number
+  count: number
+  definition: string | null
+  tip: string | null
+}> {
+  return getDb()
+    .prepare(
+      `SELECT es.mistyped_word,
+              es.suggested_word,
+              AVG(es.score) as score,
+              COUNT(*) as count,
+              mw.definition as definition,
+              mw.tip as tip
+       FROM error_suggestions es
+       LEFT JOIN mastered_words mw ON mw.word = es.suggested_word
+       GROUP BY es.mistyped_word, es.suggested_word
+       ORDER BY count DESC, score DESC
+       LIMIT ?`
+    )
+    .all(limit) as Array<{
+      mistyped_word: string
+      suggested_word: string
+      score: number
+      count: number
+      definition: string | null
+      tip: string | null
+    }>
+}
+
+export function correctionsSince(timestamp: number): number {
+  const row = getDb()
+    .prepare('SELECT COUNT(*) as count FROM errors WHERE timestamp >= ?')
+    .get(timestamp) as { count: number }
+  return Number(row.count || 0)
 }
 
 export function recentErrors(limit: number): Array<{

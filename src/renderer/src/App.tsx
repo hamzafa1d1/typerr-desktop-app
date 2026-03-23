@@ -31,10 +31,11 @@ export default function App(): React.JSX.Element {
   const [analysis, setAnalysis] = useState<AuditAnalysis | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [refreshIntervalMs, setRefreshIntervalMs] = useState(60 * 60 * 1000)
 
   const kpis = useMemo(
-    () => buildTypingKpis(stats, wpmHistory, lastStatsAt),
-    [lastStatsAt, stats, wpmHistory]
+    () => buildTypingKpis(stats, wpmHistory, lastStatsAt, refreshIntervalMs),
+    [lastStatsAt, refreshIntervalMs, stats, wpmHistory]
   )
   const focus = useMemo(() => buildImprovementFocus(stats, wpmHistory), [stats, wpmHistory])
 
@@ -52,6 +53,10 @@ export default function App(): React.JSX.Element {
     return off
   }, [])
 
+  useEffect(() => {
+    void window.typerr.setStatsRefreshInterval(refreshIntervalMs)
+  }, [refreshIntervalMs])
+
   const runAuditAnalysis = async (): Promise<void> => {
     setAnalysisLoading(true)
     setAnalysisError(null)
@@ -67,7 +72,7 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-background via-muted to-background text-foreground">
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
       <motion.div
         className="flex-1 overflow-y-auto px-6 pb-8 pt-8 sm:px-8 scroll-smooth"
@@ -83,7 +88,11 @@ export default function App(): React.JSX.Element {
         </div>
 
         <div className="relative mx-auto w-full max-w-6xl z-10">
-          <AppHeader iconSrc={typerrIcon} />
+          <AppHeader
+            iconSrc={typerrIcon}
+            refreshIntervalMs={refreshIntervalMs}
+            onRefreshIntervalChange={setRefreshIntervalMs}
+          />
 
           {uxFlags.dashboardLayout === 'bento' ? (
           <motion.div
@@ -119,8 +128,8 @@ export default function App(): React.JSX.Element {
 
             <motion.section variants={itemVariants} className="xl:col-span-5">
               {stats.lastError ? (
-                <p className="mt-5 rounded-lg border border-white/10 bg-gradient-to-r from-white/5 to-white/3 px-3 py-2 text-[0.7rem] leading-relaxed text-white/55 backdrop-blur-sm">
-                  Last flagged: <span className="text-white/75">{stats.lastError.mistyped_word}</span>
+                <p className="mt-5 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-[0.7rem] leading-relaxed text-muted-foreground backdrop-blur-sm">
+                  Last flagged: <span className="text-foreground/80">{stats.lastError.mistyped_word}</span>
                 </p>
               ) : null}
             </motion.section>
@@ -151,8 +160,8 @@ export default function App(): React.JSX.Element {
               <KpiGrid items={kpis} />
               <CorrectionsFeedCard rows={stats.recentErrors} />
               {stats.lastError ? (
-                <p className="rounded-lg border border-white/10 bg-gradient-to-r from-white/5 to-white/3 px-3 py-2 text-[0.7rem] leading-relaxed text-white/55 backdrop-blur-sm">
-                  Last flagged: <span className="text-white/75">{stats.lastError.mistyped_word}</span>
+                <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-[0.7rem] leading-relaxed text-muted-foreground backdrop-blur-sm">
+                  Last flagged: <span className="text-foreground/80">{stats.lastError.mistyped_word}</span>
                 </p>
               ) : null}
             </motion.aside>

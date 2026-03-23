@@ -34,7 +34,8 @@ function correctionsInWindow(recentErrors: TyperrErrorRow[], now: number, ms: nu
 export function buildTypingKpis(
   stats: TyperrStatsPayload,
   wpmHistory: number[],
-  lastStatsAt: number | null
+  lastStatsAt: number | null,
+  refreshIntervalMs: number
 ): TypingKpi[] {
   const now = Date.now()
   const correctionBursts = correctionsInWindow(stats.recentErrors, now, 60_000)
@@ -42,7 +43,8 @@ export function buildTypingKpis(
   const rhythmState =
     rhythmVariance < 12 ? 'steady' : rhythmVariance < 35 ? 'fluctuating' : 'unstable'
 
-  const online = lastStatsAt !== null && now - lastStatsAt <= 4_500
+  const onlineWindow = Math.max(4_500, refreshIntervalMs + 2_000)
+  const online = lastStatsAt !== null && now - lastStatsAt <= onlineWindow
 
   return [
     {

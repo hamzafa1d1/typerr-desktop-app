@@ -7,6 +7,8 @@ const typerr = {
     ipcRenderer.invoke('typerr:get-initial-stats'),
   analyzeAudit: (request?: AuditAnalysisRequest): Promise<AuditAnalysis> =>
     ipcRenderer.invoke('typerr:analyze-audit', request),
+  setStatsRefreshInterval: (ms: number): Promise<number> =>
+    ipcRenderer.invoke('typerr:set-stats-interval', ms),
   onStats: (cb: (payload: TyperrStatsPayload) => void): (() => void) => {
     const handler = (_evt: Electron.IpcRendererEvent, payload: TyperrStatsPayload): void =>
       cb(payload)

@@ -57,13 +57,13 @@ const ChartTooltipContent = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        'rounded-lg border border-white/15 bg-slate-950/90 px-3 py-2 text-xs text-white shadow-xl backdrop-blur-md',
+        'rounded-lg border border-border/60 bg-card/95 px-3 py-2 text-xs text-foreground shadow-xl backdrop-blur-md',
         className
       )}
       {...props}
     >
       {!hideLabel ? (
-        <div className="mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/50">
+        <div className="mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-muted-foreground">
           {labelContent}
         </div>
       ) : null}
@@ -73,8 +73,8 @@ const ChartTooltipContent = React.forwardRef<
           const itemConfig = config[key]
           const rawValue = typeof item.value === 'number' ? item.value : Number(item.value)
           return (
-            <div key={key} className="flex items-center justify-between gap-3 text-white/80">
-              <span className="text-white/60">{itemConfig?.label ?? key}</span>
+            <div key={key} className="flex items-center justify-between gap-3 text-foreground">
+              <span className="text-muted-foreground">{itemConfig?.label ?? key}</span>
               <span className="font-semibold">
                 {valueFormatter ? valueFormatter(rawValue, key, item) : rawValue}
               </span>

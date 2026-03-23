@@ -42,18 +42,18 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
 
   const getActivityColor = (metrics: DayMetrics): string => {
     if (!metrics.wpm && !metrics.practiceMinutes) {
-      return 'bg-white/5 hover:bg-white/10'
+      return 'bg-muted/40 hover:bg-muted/60'
     }
 
     const wpm = metrics.wpm || 0
     const practiceTime = metrics.practiceMinutes || 0
     const combined = wpm * 0.6 + practiceTime * 2
 
-    if (combined === 0) return 'bg-white/5 hover:bg-white/10'
-    if (combined < 30) return 'bg-emerald-500/25 hover:bg-emerald-500/35'
-    if (combined < 60) return 'bg-emerald-500/45 hover:bg-emerald-500/55'
-    if (combined < 90) return 'bg-emerald-500/65 hover:bg-emerald-500/75'
-    return 'bg-emerald-500/85 hover:bg-emerald-500/95'
+    if (combined === 0) return 'bg-muted/40 hover:bg-muted/60'
+    if (combined < 30) return 'bg-teal-500/25 hover:bg-teal-500/35'
+    if (combined < 60) return 'bg-teal-500/45 hover:bg-teal-500/55'
+    if (combined < 90) return 'bg-teal-500/65 hover:bg-teal-500/75'
+    return 'bg-teal-500/85 hover:bg-teal-500/95'
   }
 
   const getTooltipText = (metrics: DayMetrics): string => {
@@ -91,59 +91,59 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
     >
-      <Card className="group relative overflow-hidden bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md border-white/15 shadow-xl shadow-white/5 hover:shadow-xl hover:shadow-white/10 hover:border-white/25 transition-all duration-300">
+      <Card className="group relative overflow-hidden bg-card/70 backdrop-blur-md border-border/60 shadow-xl shadow-black/5 hover:shadow-xl hover:shadow-black/10 transition-all duration-300">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-transparent to-emerald-500/0 group-hover:from-emerald-500/5 group-hover:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
         <CardHeader className="relative z-10 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 4, repeat: Infinity }}>
-                <TrendingUp className="w-5 h-5 text-emerald-400" strokeWidth={2.5} />
+                <TrendingUp className="w-5 h-5 text-teal-500" strokeWidth={2.5} />
               </motion.div>
-              <CardTitle className="text-sm font-bold text-white/90">Activity Heatmap</CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground">Activity Heatmap</CardTitle>
             </div>
             <motion.span
               animate={{ opacity: [0.5, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="text-xs font-semibold text-white/60 flex items-center gap-1"
+              className="text-xs font-semibold text-muted-foreground flex items-center gap-1"
             >
               <Calendar className="w-3 h-3" />
               12 weeks
             </motion.span>
           </div>
-          <p className="text-xs text-white/45 mt-2 font-medium">Visualization of your typing consistency and practice patterns</p>
+          <p className="text-xs text-muted-foreground mt-2 font-medium">Visualization of your typing consistency and practice patterns</p>
         </CardHeader>
 
         <CardContent className="relative z-10">
           <div className="flex flex-col gap-5">
             {/* Enhanced Metrics Legend */}
             <div className="flex gap-3 text-xs">
-              <motion.div whileHover={{ x: 3 }} className="flex items-center gap-2 text-white/60 bg-gradient-to-r from-blue-500/10 to-transparent px-3 py-2 rounded-lg border border-blue-500/20">
+              <motion.div whileHover={{ x: 3 }} className="flex items-center gap-2 text-muted-foreground bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20">
                 <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} />
                 <span className="font-medium">Speed metrics</span>
               </motion.div>
-              <motion.div whileHover={{ x: 3 }} className="flex items-center gap-2 text-white/60 bg-gradient-to-r from-emerald-500/10 to-transparent px-3 py-2 rounded-lg border border-emerald-500/20">
-                <TrendingUp className="w-4 h-4 text-emerald-400" strokeWidth={2} />
+              <motion.div whileHover={{ x: 3 }} className="flex items-center gap-2 text-muted-foreground bg-teal-500/10 px-3 py-2 rounded-lg border border-teal-500/20">
+                <TrendingUp className="w-4 h-4 text-teal-500" strokeWidth={2} />
                 <span className="font-medium">Activity level</span>
               </motion.div>
             </div>
 
             {/* Intensity Scale Legend */}
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-white/40 font-semibold">Intensity:</span>
+              <span className="text-muted-foreground font-semibold">Intensity:</span>
               <div className="flex gap-1">
                 {[5, 25, 45, 65, 85].map((intensity) => (
                   <motion.div
                     key={intensity}
                     whileHover={{ scale: 1.2 }}
                     title={`${intensity}% activity`}
-                    className={`w-4 h-4 rounded-sm border border-white/20 cursor-help ${
-                      intensity === 5 ? 'bg-white/5' : `bg-emerald-${intensity === 25 ? '500/25' : intensity === 45 ? '500/45' : intensity === 65 ? '500/65' : '500/85'}`
+                    className={`w-4 h-4 rounded-sm border border-border/60 cursor-help ${
+                      intensity === 5 ? 'bg-muted/40' : `bg-teal-${intensity === 25 ? '500/25' : intensity === 45 ? '500/45' : intensity === 65 ? '500/65' : '500/85'}`
                     }`}
                   />
                 ))}
               </div>
-              <span className="text-white/40 ml-auto">Less ← Activity → More</span>
+              <span className="text-muted-foreground ml-auto">Less ← Activity → More</span>
             </div>
 
             {/* Optimized Heatmap Grid */}
@@ -159,7 +159,7 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
                   >
                     {formatWeek(week, weekIdx) && (
                       <div className="h-5 flex items-center">
-                        <span className="text-[9px] text-white/50 font-bold uppercase tracking-wider">{formatWeek(week, weekIdx)}</span>
+                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">{formatWeek(week, weekIdx)}</span>
                       </div>
                     )}
                     {!formatWeek(week, weekIdx) && <div className="h-5" />}
@@ -170,7 +170,7 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
                           key={`day-${weekIdx}-${dayIdx}`}
                           className={`group/day relative w-4 h-4 rounded-md shadow-sm ${getActivityColor(
                             day
-                          )} backdrop-blur-sm border border-white/25 hover:border-emerald-400/60 hover:shadow-lg hover:shadow-emerald-500/50 transition-all duration-200 cursor-pointer`}
+                          )} backdrop-blur-sm border border-border/60 hover:border-teal-500/60 hover:shadow-lg hover:shadow-teal-500/40 transition-all duration-200 cursor-pointer`}
                           whileHover={{ scale: 1.35, y: -2 }}
                           whileTap={{ scale: 0.95 }}
                           title={getTooltipText(day)}
@@ -179,11 +179,11 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
                             <motion.div
                               initial={{ opacity: 0, scale: 0.9, y: 5 }}
                               whileHover={{ opacity: 1, scale: 1, y: 0 }}
-                              className="bg-gradient-to-br from-emerald-950/95 to-slate-950 backdrop-blur-md text-white text-[11px] px-3 py-2 rounded-md whitespace-nowrap border border-emerald-500/40 font-medium shadow-lg"
+                              className="bg-card/95 backdrop-blur-md text-foreground text-[11px] px-3 py-2 rounded-md whitespace-nowrap border border-border/60 font-medium shadow-lg"
                             >
                               {getTooltipText(day)}
                               {day.date && (
-                                <div className="text-[9px] text-white/60 mt-0.5">
+                                <div className="text-[9px] text-muted-foreground mt-0.5">
                                   {day.date.toLocaleDateString('en-US', {
                                     weekday: 'short',
                                     month: 'short',
@@ -202,42 +202,42 @@ export function DailyProgressChart({ data = [] }: DailyProgressChartProps) {
             </div>
 
             {/* Enhanced Stats Summary */}
-            <div className="grid grid-cols-4 gap-3 pt-6 border-t border-white/10">
+            <div className="grid grid-cols-4 gap-3 pt-6 border-t border-border/60">
               {/* Active Days */}
               <motion.div whileHover={{ y: -2 }} className="text-center group/stat">
-                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-emerald-500/20 to-transparent border border-emerald-500/30 group-hover/stat:border-emerald-500/60 transition-all">
-                  <Calendar className="w-4 h-4 text-emerald-400" strokeWidth={2} />
+                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-teal-500/20 to-transparent border border-teal-500/30 group-hover/stat:border-teal-500/60 transition-all">
+                  <Calendar className="w-4 h-4 text-teal-500" strokeWidth={2} />
                 </motion.div>
-                <div className="text-lg font-bold tabular-nums text-emerald-400 group-hover/stat:text-emerald-300 transition-colors">{activeDays}</div>
-                <div className="text-[10px] text-white/45 font-medium uppercase tracking-wider mt-1">Active Days</div>
+                <div className="text-lg font-bold tabular-nums text-teal-500 group-hover/stat:text-teal-400 transition-colors">{activeDays}</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Active Days</div>
               </motion.div>
 
               {/* Peak Speed */}
               <motion.div whileHover={{ y: -2 }} className="text-center group/stat">
-                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 group-hover/stat:border-blue-500/60 transition-all">
-                  <Zap className="w-4 h-4 text-blue-400" strokeWidth={2} />
+                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-indigo-500/20 to-transparent border border-indigo-500/30 group-hover/stat:border-indigo-500/60 transition-all">
+                  <Zap className="w-4 h-4 text-indigo-500" strokeWidth={2} />
                 </motion.div>
-                <div className="text-lg font-bold tabular-nums text-blue-400 group-hover/stat:text-blue-300 transition-colors">{peakSpeed}</div>
-                <div className="text-[10px] text-white/45 font-medium uppercase tracking-wider mt-1">Peak Speed</div>
+                <div className="text-lg font-bold tabular-nums text-indigo-500 group-hover/stat:text-indigo-400 transition-colors">{peakSpeed}</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Peak Speed</div>
               </motion.div>
 
               {/* Best Streak */}
               <motion.div whileHover={{ y: -2 }} className="text-center group/stat">
-                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 group-hover/stat:border-purple-500/60 transition-all">
-                  <Target className="w-4 h-4 text-purple-400" strokeWidth={2} />
+                <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-violet-500/20 to-transparent border border-violet-500/30 group-hover/stat:border-violet-500/60 transition-all">
+                  <Target className="w-4 h-4 text-violet-500" strokeWidth={2} />
                 </motion.div>
-                <div className="text-lg font-bold tabular-nums text-purple-400 group-hover/stat:text-purple-300 transition-colors">{bestStreak}</div>
-                <div className="text-[10px] text-white/45 font-medium uppercase tracking-wider mt-1">Best Streak</div>
+                <div className="text-lg font-bold tabular-nums text-violet-500 group-hover/stat:text-violet-400 transition-colors">{bestStreak}</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Best Streak</div>
               </motion.div>
 
               {/* Total Hours */}
               <motion.div whileHover={{ y: -2 }} className="text-center group/stat">
                 <motion.div className="flex items-center justify-center w-8 h-8 rounded-lg mb-2 mx-auto bg-gradient-to-br from-amber-500/20 to-transparent border border-amber-500/30 group-hover/stat:border-amber-500/60 transition-all">
-                  <Clock className="w-4 h-4 text-amber-400" strokeWidth={2} />
+                  <Clock className="w-4 h-4 text-amber-500" strokeWidth={2} />
                 </motion.div>
-                <div className="text-lg font-bold tabular-nums text-amber-400 group-hover/stat:text-amber-300 transition-colors">{activeHours}</div>
-                <div className="text-[10px] text-white/45 font-medium uppercase tracking-wider mt-1">Total Hours</div>
-                <div className="text-[9px] text-white/35 mt-0.5">{activeMinutes}m</div>
+                <div className="text-lg font-bold tabular-nums text-amber-500 group-hover/stat:text-amber-400 transition-colors">{activeHours}</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mt-1">Total Hours</div>
+                <div className="text-[9px] text-muted-foreground mt-0.5">{activeMinutes}m</div>
               </motion.div>
             </div>
           </div>

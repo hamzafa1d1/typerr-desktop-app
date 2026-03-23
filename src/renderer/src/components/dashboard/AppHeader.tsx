@@ -16,9 +16,25 @@ function getInitialTheme(): ThemeMode {
 
 type AppHeaderProps = {
   iconSrc: string
+  refreshIntervalMs: number
+  onRefreshIntervalChange: (value: number) => void
 }
 
-export function AppHeader({ iconSrc }: AppHeaderProps): React.JSX.Element {
+const refreshOptions = [
+  { label: '5s', value: 5_000 },
+  { label: '10s', value: 10_000 },
+  { label: '30s', value: 30_000 },
+  { label: '60s', value: 60_000 },
+  { label: '5m', value: 300_000 },
+  { label: '15m', value: 900_000 },
+  { label: '1h', value: 3_600_000 }
+]
+
+export function AppHeader({
+  iconSrc,
+  refreshIntervalMs,
+  onRefreshIntervalChange
+}: AppHeaderProps): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme)
 
   useEffect(() => {
@@ -39,7 +55,7 @@ export function AppHeader({ iconSrc }: AppHeaderProps): React.JSX.Element {
       className="relative mb-8 rounded-xl border border-border/60 bg-card/70 backdrop-blur-md p-5 shadow-lg shadow-black/10 transition-all duration-300 group"
     >
       {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/0 via-transparent to-emerald-500/0 group-hover:from-blue-500/10 group-hover:to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="absolute inset-0 rounded-xl bg-muted/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
       <div className="relative z-10 flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -55,17 +71,32 @@ export function AppHeader({ iconSrc }: AppHeaderProps): React.JSX.Element {
               Dashboard
             </p>
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Sparkles className="h-4 w-4 text-blue-500" strokeWidth={2} />
+              <Sparkles className="h-4 w-4 text-indigo-500" strokeWidth={2} />
               Typerr
             </div>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <span>Refresh</span>
+              <select
+                value={refreshIntervalMs}
+                onChange={(event) => onRefreshIntervalChange(Number(event.target.value))}
+                className="bg-transparent text-foreground text-[0.65rem] font-semibold uppercase tracking-[0.15em] focus:outline-none"
+                aria-label="Refresh interval"
+              >
+                {refreshOptions.map((option) => (
+                  <option key={option.value} value={option.value} className="bg-background text-foreground">
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               <span>Live</span>
               <motion.span
                 animate={{ opacity: [0.4, 1] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
-                className="h-2 w-2 rounded-full bg-emerald-400"
+                className="h-2 w-2 rounded-full bg-teal-500"
               />
             </div>
             <Button
@@ -82,7 +113,7 @@ export function AppHeader({ iconSrc }: AppHeaderProps): React.JSX.Element {
 
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-400" strokeWidth={2.5} />
+            <Zap className="h-4 w-4 text-amber-500" strokeWidth={2.5} />
             <h1 className="text-xl font-semibold text-foreground">Real-time Typing Audit</h1>
           </div>
           <p className="text-sm text-muted-foreground">

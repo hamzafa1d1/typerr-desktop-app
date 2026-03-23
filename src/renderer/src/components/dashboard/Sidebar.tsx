@@ -77,7 +77,7 @@ export function Sidebar() {
           <motion.span 
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-emerald-500/30"
+            className="text-[9px] bg-teal-500/10 text-teal-700 dark:text-teal-300 px-2 py-1 rounded-full font-bold uppercase tracking-wider border border-teal-500/30"
           >
             beta
           </motion.span>
@@ -89,7 +89,7 @@ export function Sidebar() {
         {/* Primary Action */}
         <Button
           onClick={() => handleNavigate('audit')}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 text-emerald-600 dark:text-emerald-300 hover:border-emerald-500/70 shadow-lg shadow-emerald-500/10"
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:border-teal-500/70 shadow-lg shadow-teal-500/10"
           variant="ghost"
         >
           <motion.div
@@ -125,7 +125,7 @@ export function Sidebar() {
                   <Icon className={`w-4 h-4 transition-all ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`} strokeWidth={2} />
                   <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
                   <motion.div
-                    className={`h-1.5 w-1.5 rounded-full transition-colors ${isActive ? 'bg-emerald-400' : 'bg-transparent group-hover:bg-emerald-300/60'}`}
+                    className={`h-1.5 w-1.5 rounded-full transition-colors ${isActive ? 'bg-teal-500' : 'bg-transparent group-hover:bg-teal-400/60'}`}
                   />
                 </motion.button>
               )
@@ -145,7 +145,7 @@ export function Sidebar() {
               <span className="text-xs font-semibold text-muted-foreground">AI Report Ready</span>
             </div>
             <motion.div
-              className="w-3 h-3 rounded-full bg-emerald-400"
+              className="w-3 h-3 rounded-full bg-teal-500"
               animate={{ scale: [1, 1.15, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
@@ -155,7 +155,7 @@ export function Sidebar() {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
-          className="w-full py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition-all duration-300 shadow-lg shadow-emerald-500/30 uppercase tracking-wider"
+          className="w-full py-2.5 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition-all duration-300 shadow-lg shadow-teal-500/30 uppercase tracking-wider"
           onClick={() => handleNavigate('audit')}
         >
           Generate AI Report

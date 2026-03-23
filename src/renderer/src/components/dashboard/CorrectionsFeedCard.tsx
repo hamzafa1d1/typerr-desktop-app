@@ -9,25 +9,25 @@ type CorrectionsFeedCardProps = {
 
 export function CorrectionsFeedCard({ rows }: CorrectionsFeedCardProps): React.JSX.Element {
   return (
-    <Card className="w-full border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md">
+    <Card className="w-full border-border/60 bg-card/70 backdrop-blur-md">
       <CardHeader>
         <CardTitle>Recent corrections</CardTitle>
-        <p className="text-xs text-white/35">Last 5 potential typos (backspace heuristic)</p>
+        <p className="text-xs text-muted-foreground">Last 5 potential typos (backspace heuristic)</p>
       </CardHeader>
       <CardContent className="pb-4">
         <ScrollArea className="h-[260px] pr-3">
           <ul className="space-y-3">
             {rows.length === 0 ? (
-              <li className="text-sm text-white/35">No corrections logged yet.</li>
+              <li className="text-sm text-muted-foreground">No corrections logged yet.</li>
             ) : (
               rows.map((row: TyperrErrorRow, i: number) => (
                 <li
                   key={`${row.timestamp}-${i}`}
-                  className="rounded-lg border border-white/5 bg-gradient-to-r from-white/5 to-white/3 backdrop-blur-sm px-3 py-2.5"
+                  className="rounded-lg border border-border/60 bg-muted/40 backdrop-blur-sm px-3 py-2.5"
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium text-white/85">{row.mistyped_word}</span>
-                    <span className="text-[0.65rem] tabular-nums text-white/35">
+                    <span className="font-medium text-foreground/90">{row.mistyped_word}</span>
+                    <span className="text-[0.65rem] tabular-nums text-muted-foreground">
                       {formatTime(row.timestamp)}
                     </span>
                   </div>

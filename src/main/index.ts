@@ -26,6 +26,10 @@ let tray: Tray | null = null
 let monitor: TypingMonitor | null = null
 let sessionId = 0
 let statsTimer: ReturnType<typeof setInterval> | null = null
+const DEFAULT_STATS_INTERVAL_MS = 60 * 60 * 1000
+const MIN_STATS_INTERVAL_MS = 1000
+const MAX_STATS_INTERVAL_MS = 60 * 60 * 1000
+let statsIntervalMs = DEFAULT_STATS_INTERVAL_MS
 let accessibilityPoll: ReturnType<typeof setInterval> | null = null
 let appIsQuitting = false
 let coreStarted = false
@@ -50,7 +54,7 @@ function broadcastStats(): void {
 
 function startStatsLoop(): void {
   if (statsTimer) clearInterval(statsTimer)
-  statsTimer = setInterval(() => broadcastStats(), 2000)
+  statsTimer = setInterval(() => broadcastStats(), statsIntervalMs)
 }
 
 function stopStatsLoop(): void {
@@ -58,6 +62,14 @@ function stopStatsLoop(): void {
     clearInterval(statsTimer)
     statsTimer = null
   }
+}
+
+function setStatsInterval(ms: number): number {
+  if (!Number.isFinite(ms)) return statsIntervalMs
+  const next = Math.min(Math.max(Math.floor(ms), MIN_STATS_INTERVAL_MS), MAX_STATS_INTERVAL_MS)
+  statsIntervalMs = next
+  startStatsLoop()
+  return statsIntervalMs
 }
 
 function createMainWindow(): void {
@@ -382,6 +394,10 @@ app.whenReady().then(() => {
 
   ipcMain.handle('typerr:analyze-audit', async (_evt, request) => {
     return analyzeAudit(request)
+  })
+
+  ipcMain.handle('typerr:set-stats-interval', (_evt, ms: number) => {
+    return setStatsInterval(ms)
   })
 
   waitForAccessibilityThenStart()

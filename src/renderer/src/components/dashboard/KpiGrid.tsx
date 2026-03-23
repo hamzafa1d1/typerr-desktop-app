@@ -10,15 +10,15 @@ type KpiGridProps = {
 }
 
 function toneClasses(tone: TypingKpi['tone']): string {
-  if (tone === 'good') return 'text-emerald-400'
-  if (tone === 'warn') return 'text-amber-400'
-  return 'text-white/80'
+  if (tone === 'good') return 'text-teal-500'
+  if (tone === 'warn') return 'text-amber-500'
+  return 'text-muted-foreground'
 }
 
 function toneGradient(tone: TypingKpi['tone']): string {
-  if (tone === 'good') return 'from-emerald-500/20 to-emerald-500/5'
+  if (tone === 'good') return 'from-teal-500/20 to-teal-500/5'
   if (tone === 'warn') return 'from-amber-500/20 to-amber-500/5'
-  return 'from-white/10 to-white/5'
+  return 'from-muted/60 to-muted/30'
 }
 
 function getIconComponent(tone: TypingKpi['tone']) {
@@ -46,7 +46,7 @@ function parseKpiValue(item: TypingKpi): number {
 }
 
 const toneColors: Record<TypingKpi['tone'], string> = {
-  good: '#34d399',
+  good: '#14b8a6',
   warn: '#f59e0b',
   neutral: '#94a3b8'
 }
@@ -63,14 +63,14 @@ export function KpiGrid({ items }: KpiGridProps): React.JSX.Element {
 
   return (
     <div className="space-y-3">
-      <Card className="group relative overflow-hidden border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md shadow-lg shadow-white/5 hover:shadow-lg hover:shadow-white/10 hover:border-white/25 transition-all duration-300">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-emerald-500/0 group-hover:from-blue-500/10 group-hover:to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <Card className="group relative overflow-hidden border-border/60 bg-card/70 backdrop-blur-md shadow-lg shadow-black/5 hover:shadow-lg hover:shadow-black/10 transition-all duration-300">
+        <div className="absolute inset-0 bg-muted/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         <CardHeader className="relative z-10 p-4 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-[0.7rem] uppercase tracking-[0.2em] text-white/50 font-semibold">
+            <CardTitle className="text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
               KPI Momentum
             </CardTitle>
-            <span className="text-[0.65rem] text-white/40">Normalized score</span>
+            <span className="text-[0.65rem] text-muted-foreground">Normalized score</span>
           </div>
         </CardHeader>
         <CardContent className="relative z-10 p-4 pt-1">
@@ -83,23 +83,23 @@ export function KpiGrid({ items }: KpiGridProps): React.JSX.Element {
             }}
           >
             <BarChart data={chartData} margin={{ left: 4, right: 4, top: 4, bottom: 8 }}>
-              <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.08)" />
+                <CartesianGrid vertical={false} stroke="rgba(148, 163, 184, 0.3)" />
               <XAxis
                 dataKey="label"
                 tickLine={false}
                 axisLine={false}
                 interval={0}
-                tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+                  tick={{ fill: 'rgba(100, 116, 139, 0.8)', fontSize: 10 }}
                 tickFormatter={(value) => String(value).split(' ')[0]}
               />
               <YAxis
                 domain={[0, 100]}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }}
+                  tick={{ fill: 'rgba(100, 116, 139, 0.6)', fontSize: 10 }}
               />
               <ChartTooltip
-                cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                  cursor={{ fill: 'rgba(148, 163, 184, 0.2)' }}
                 content={
                   <ChartTooltipContent
                     labelFormatter={(value) => `KPI: ${value}`}
@@ -131,15 +131,15 @@ export function KpiGrid({ items }: KpiGridProps): React.JSX.Element {
               transition={{ delay: idx * 0.05, duration: 0.4 }}
             >
               <Card
-                className={`group relative h-full overflow-hidden border-white/15 bg-gradient-to-br ${toneGradient(
+                className={`group relative h-full overflow-hidden border-border/60 bg-gradient-to-br ${toneGradient(
                   item.tone
-                )} backdrop-blur-md shadow-lg shadow-white/5 hover:shadow-lg hover:shadow-white/10 hover:border-white/25 transition-all duration-300`}
+                )} backdrop-blur-md shadow-lg shadow-black/5 hover:shadow-lg hover:shadow-black/10 transition-all duration-300`}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent group-hover:from-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-muted/40 via-transparent to-transparent group-hover:from-muted/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                 <CardHeader className="relative z-10 p-4 pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-[0.7rem] uppercase tracking-[0.15em] text-white/50 font-semibold flex-1">
+                    <CardTitle className="text-[0.7rem] uppercase tracking-[0.15em] text-muted-foreground font-semibold flex-1">
                       {item.label}
                     </CardTitle>
                     <motion.div
@@ -161,7 +161,7 @@ export function KpiGrid({ items }: KpiGridProps): React.JSX.Element {
                   >
                     {item.value}
                   </motion.p>
-                  <p className="text-[0.65rem] leading-snug text-white/35 font-medium">{item.hint}</p>
+                  <p className="text-[0.65rem] leading-snug text-muted-foreground font-medium">{item.hint}</p>
                 </CardContent>
               </Card>
             </motion.div>

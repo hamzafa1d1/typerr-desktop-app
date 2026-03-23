@@ -5,6 +5,7 @@ export interface TyperrAPI {
   getInitialStats: () => Promise<TyperrStatsPayload>
   onStats: (cb: (payload: TyperrStatsPayload) => void) => () => void
   analyzeAudit: (request?: AuditAnalysisRequest) => Promise<AuditAnalysis>
+  setStatsRefreshInterval: (ms: number) => Promise<number>
 }
 
 declare global {

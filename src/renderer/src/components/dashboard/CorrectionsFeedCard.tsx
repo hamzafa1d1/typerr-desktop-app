@@ -9,7 +9,7 @@ type CorrectionsFeedCardProps = {
 
 export function CorrectionsFeedCard({ rows }: CorrectionsFeedCardProps): React.JSX.Element {
   return (
-    <Card className="w-full border-white/[0.08] bg-black/25">
+    <Card className="w-full border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md">
       <CardHeader>
         <CardTitle>Recent corrections</CardTitle>
         <p className="text-xs text-white/35">Last 5 potential typos (backspace heuristic)</p>
@@ -23,7 +23,7 @@ export function CorrectionsFeedCard({ rows }: CorrectionsFeedCardProps): React.J
               rows.map((row: TyperrErrorRow, i: number) => (
                 <li
                   key={`${row.timestamp}-${i}`}
-                  className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5"
+                  className="rounded-lg border border-white/5 bg-gradient-to-r from-white/5 to-white/3 backdrop-blur-sm px-3 py-2.5"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-medium text-white/85">{row.mistyped_word}</span>

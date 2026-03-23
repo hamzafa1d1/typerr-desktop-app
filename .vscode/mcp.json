@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "electron-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-docs",
+        "https://www.electronjs.org/docs/latest"
+      ]
+    },
+    "shadcn-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-docs",
+        "https://ui.shadcn.com/docs"
+      ]
+    }
+  }
+}

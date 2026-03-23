@@ -13,7 +13,7 @@ function BulletList({ items }: { items: string[] }): React.JSX.Element {
   return (
     <ul className="space-y-1.5">
       {items.map((item) => (
-        <li key={item} className="rounded-md border border-white/10 bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/70">
+        <li key={item} className="rounded-md border border-white/10 bg-gradient-to-r from-white/5 to-white/3 backdrop-blur-sm px-2.5 py-1.5 text-xs text-white/70">
           {item}
         </li>
       ))}
@@ -28,7 +28,7 @@ export function AuditIntelligenceCard({
   onAnalyze
 }: AuditIntelligenceCardProps): React.JSX.Element {
   return (
-    <Card className="w-full border-white/[0.08] bg-black/25">
+    <Card className="w-full border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
           <CardTitle>Smart Audit Analysis</CardTitle>
@@ -52,7 +52,7 @@ export function AuditIntelligenceCard({
           <p className="text-sm text-white/50">No analysis yet. Click Run Analysis to generate insights.</p>
         ) : (
           <>
-            <p className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm leading-relaxed text-white/75">
+            <p className="rounded-md border border-white/10 bg-gradient-to-r from-white/5 to-white/3 backdrop-blur-sm px-3 py-2 text-sm leading-relaxed text-white/75">
               {analysis.summary}
             </p>
 

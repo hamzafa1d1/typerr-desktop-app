@@ -5,6 +5,16 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish a GitHub release after build'
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: 'Tag name for manual release (for example v1.0.1)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -77,7 +87,7 @@ jobs:
     name: Publish GitHub Release
     runs-on: ubuntu-22.04
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
     permissions:
       contents: write
 
@@ -92,5 +102,6 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || github.ref_name }}
           generate_release_notes: true
           files: release-assets/*

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Zap, Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type ThemeMode = 'light' | 'dark'
@@ -52,73 +52,65 @@ export function AppHeader({
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative mb-8 rounded-xl border border-border/60 bg-card/70 backdrop-blur-md p-5 shadow-lg shadow-black/10 transition-all duration-300 group"
+      className="mb-8 rounded-xl border border-border/60 bg-card/70 backdrop-blur-md px-5 py-3.5 shadow-lg shadow-black/10"
     >
-      {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 rounded-xl bg-muted/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      <div className="flex items-center gap-3">
+        {/* Brand */}
+        <img
+          src={iconSrc}
+          alt="Typerr icon"
+          className="h-5 w-5 rounded-md shrink-0"
+        />
+        <span className="text-sm font-semibold text-foreground">Typerr</span>
 
-      <div className="relative z-10 flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <motion.img
-            animate={{ rotate: [0, 5, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            src={iconSrc}
-            alt="Typerr icon"
-            className="h-6 w-6 rounded-md shadow-md"
-          />
-          <div className="space-y-1">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
-              Dashboard
-            </p>
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Sparkles className="h-4 w-4 text-indigo-500" strokeWidth={2} />
-              Typerr
-            </div>
+        {/* Separator + page title */}
+        <span className="text-border/80 select-none">·</span>
+        <h1
+          className="text-sm font-medium text-muted-foreground"
+          title="Live feedback, accurate tracking, continuous improvement"
+        >
+          Real-time Typing Audit
+        </h1>
+
+        {/* Controls */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Live indicator */}
+          <div className="flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <motion.span
+              animate={{ opacity: [0.4, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="h-1.5 w-1.5 rounded-full bg-teal-500"
+            />
+            <span>Live</span>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              <span>Refresh</span>
-              <select
-                value={refreshIntervalMs}
-                onChange={(event) => onRefreshIntervalChange(Number(event.target.value))}
-                className="bg-transparent text-foreground text-[0.65rem] font-semibold uppercase tracking-[0.15em] focus:outline-none"
-                aria-label="Refresh interval"
-              >
-                {refreshOptions.map((option) => (
-                  <option key={option.value} value={option.value} className="bg-background text-foreground">
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              <span>Live</span>
-              <motion.span
-                animate={{ opacity: [0.4, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="h-2 w-2 rounded-full bg-teal-500"
-              />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              className="h-8 w-8 rounded-full border border-border/60 bg-background/60 text-foreground hover:bg-muted"
+
+          {/* Refresh selector */}
+          <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <span>Refresh</span>
+            <select
+              value={refreshIntervalMs}
+              onChange={(event) => onRefreshIntervalChange(Number(event.target.value))}
+              className="bg-transparent text-foreground text-[0.65rem] font-semibold uppercase tracking-[0.15em] focus:outline-none cursor-pointer"
+              aria-label="Refresh interval"
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+              {refreshOptions.map((option) => (
+                <option key={option.value} value={option.value} className="bg-background text-foreground">
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
 
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" strokeWidth={2.5} />
-            <h1 className="text-xl font-semibold text-foreground">Real-time Typing Audit</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Live feedback, accurate tracking, continuous improvement
-          </p>
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            className="h-7 w-7 rounded-full border border-border/60 bg-background/60 text-foreground hover:bg-muted"
+          >
+            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </Button>
         </div>
       </div>
     </motion.header>

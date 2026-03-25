@@ -7,6 +7,7 @@ import { FeedbackHubCard } from '@/components/dashboard/FeedbackHubCard'
 import { ImprovementFocusCard } from '@/components/dashboard/ImprovementFocusCard'
 import { KpiGrid } from '@/components/dashboard/KpiGrid'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { SkillSignalsCard } from '@/components/dashboard/SkillSignalsCard'
 import { WpmHeroCard } from '@/components/dashboard/WpmHeroCard'
 import { motionPresets } from '@/lib/motion'
 import { buildImprovementFocus, buildTypingKpis } from '@/lib/typing-insights'
@@ -107,8 +108,13 @@ export default function App(): React.JSX.Element {
               <WpmHeroCard wpm={stats.wpm} lastStatsAt={lastStatsAt} wpmHistory={wpmHistory} />
             </motion.section>
 
-            <motion.section id="kpis" variants={itemVariants} className="xl:col-span-5 scroll-mt-24">
+            <motion.section id="kpis" variants={itemVariants} className="xl:col-span-5 scroll-mt-24 space-y-3">
               <KpiGrid items={kpis} />
+              <SkillSignalsCard
+                wpm={stats.wpm}
+                correctionsLastHour={stats.correctionsLastHour}
+                suggestionsCount={stats.suggestedCorrections.length}
+              />
             </motion.section>
 
             <motion.section id="feedback" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">
@@ -119,10 +125,7 @@ export default function App(): React.JSX.Element {
                 onAnalyze={runAuditAnalysis}
                 rows={stats.recentErrors}
                 lastError={stats.lastError}
-                suggestions={stats.suggestedCorrections}
-                correctionsLastHour={stats.correctionsLastHour}
                 mistakeDetails={stats.mistakeDetails}
-                wpm={stats.wpm}
               />
             </motion.section>
 
@@ -151,15 +154,17 @@ export default function App(): React.JSX.Element {
                 onAnalyze={runAuditAnalysis}
                 rows={stats.recentErrors}
                 lastError={stats.lastError}
-                suggestions={stats.suggestedCorrections}
-                correctionsLastHour={stats.correctionsLastHour}
                 mistakeDetails={stats.mistakeDetails}
-                wpm={stats.wpm}
               />
             </motion.section>
 
-            <motion.aside id="kpis" variants={itemVariants} className="space-y-5 xl:col-span-4 scroll-mt-24">
+            <motion.aside id="kpis" variants={itemVariants} className="space-y-3 xl:col-span-4 scroll-mt-24">
               <KpiGrid items={kpis} />
+              <SkillSignalsCard
+                wpm={stats.wpm}
+                correctionsLastHour={stats.correctionsLastHour}
+                suggestionsCount={stats.suggestedCorrections.length}
+              />
             </motion.aside>
 
             <motion.section id="progress" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">

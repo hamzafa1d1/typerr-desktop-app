@@ -2,8 +2,7 @@ import { ChevronDown, Sparkles } from 'lucide-react'
 import type {
   AuditAnalysis,
   TyperrErrorRow,
-  TyperrMistakeDetailRow,
-  TyperrSuggestionRow
+  TyperrMistakeDetailRow
 } from '../../../../preload/typerr-types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,10 +14,7 @@ type FeedbackHubCardProps = {
   onAnalyze: () => void
   rows: TyperrErrorRow[]
   lastError: TyperrErrorRow | null
-  suggestions: TyperrSuggestionRow[]
-  correctionsLastHour: number
   mistakeDetails: TyperrMistakeDetailRow[]
-  wpm: number
 }
 
 export function FeedbackHubCard({
@@ -28,18 +24,8 @@ export function FeedbackHubCard({
   onAnalyze,
   rows,
   lastError,
-  suggestions,
-  correctionsLastHour,
-  mistakeDetails,
-  wpm
+  mistakeDetails
 }: FeedbackHubCardProps): React.JSX.Element {
-  const skillScore = Math.max(1, Math.min(100, Math.round((wpm / 80) * 100)))
-  const accuracyScore = Math.max(1, Math.min(100, Math.round(100 - correctionsLastHour * 2)))
-  const mistakeControl = Math.max(
-    1,
-    Math.min(100, Math.round(100 - suggestions.length * 6 - correctionsLastHour))
-  )
-
   const summaryCopy = analysis?.summary ??
     'Generate a report to see a focused summary of your typing patterns and improvement focus.'
 
@@ -55,7 +41,7 @@ export function FeedbackHubCard({
         <div>
           <CardTitle>Typing Feedback Hub</CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Live skill signals, top fixes, and an AI plan for next steps.
+            Top fixes, mistake patterns, and an AI plan for next steps.
           </p>
         </div>
         <Button onClick={onAnalyze} disabled={loading} size="sm" className="gap-2">
@@ -73,29 +59,6 @@ export function FeedbackHubCard({
       </CardHeader>
 
       <CardContent className="space-y-4 pb-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            { label: 'Typing Skill', score: skillScore },
-            { label: 'Accuracy', score: accuracyScore },
-            { label: 'Mistake Control', score: mistakeControl }
-          ].map((item) => (
-            <div key={item.label} className="rounded-md border border-border/60 bg-muted/40 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">{item.label}</p>
-                <span className="text-xs font-semibold text-foreground">{item.score}/100</span>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-background/70">
-                <div
-                  className={`h-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400 transition-all duration-700 ${
-                    loading ? 'animate-pulse' : ''
-                  }`}
-                  style={{ width: `${item.score}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
         {error ? (
           <p className="rounded-md border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
             {error}

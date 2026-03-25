@@ -60,18 +60,24 @@ export function buildTypingKpis(
 
   const onlineWindow = Math.max(4_500, refreshIntervalMs + 2_000)
   const online = lastStatsAt !== null && now - lastStatsAt <= onlineWindow
+  const onlineWindowSec = Math.round(onlineWindow / 1000)
+
+  const refreshLabel =
+    refreshIntervalMs < 60_000
+      ? `${refreshIntervalMs / 1000}s`
+      : `${refreshIntervalMs / 60_000}m`
 
   return [
     {
-      label: 'Typing Pace',
-      value: `${stats.wpm} WPM`,
-      hint: 'Current rolling pace',
-      tone: stats.wpm >= 45 ? 'good' : stats.wpm < 25 ? 'warn' : 'neutral'
+      label: 'Session Avg WPM',
+      value: stats.sessionAvgWpm > 0 ? `${stats.sessionAvgWpm} WPM` : '—',
+      hint: 'Average while actively typing',
+      tone: stats.sessionAvgWpm >= 45 ? 'good' : stats.sessionAvgWpm > 0 && stats.sessionAvgWpm < 25 ? 'warn' : 'neutral'
     },
     {
       label: 'Rhythm',
       value: rhythmState,
-      hint: rhythmSample.length < 6 ? 'Waiting for more samples' : 'Based on recent updates',
+      hint: rhythmSample.length < 6 ? 'Waiting for more samples' : `Based on last ${refreshLabel} of data`,
       tone: rhythmState === 'steady' ? 'good' : rhythmState === 'unstable' ? 'warn' : 'neutral'
     },
     {
@@ -83,7 +89,7 @@ export function buildTypingKpis(
     {
       label: 'Tracking Status',
       value: online ? 'Live' : 'Stale',
-      hint: online ? 'Incoming updates active' : 'No update for >4.5s',
+      hint: online ? `Refreshing every ${refreshLabel}` : `No update for >${onlineWindowSec}s`,
       tone: online ? 'good' : 'warn'
     }
   ]
@@ -109,7 +115,7 @@ export function buildImprovementFocus(
     }
   }
 
-  if (stats.wpm < 25) {
+  if (stats.sessionAvgWpm > 0 && stats.sessionAvgWpm < 25) {
     return {
       title: 'Build Baseline Speed',
       reason: 'Current pace suggests you are still warming up or typing cautiously.',

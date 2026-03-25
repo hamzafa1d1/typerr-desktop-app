@@ -140,6 +140,7 @@ export function topMistakeDetails(limit: number): Array<{
        FROM error_suggestions es
        LEFT JOIN mastered_words mw ON mw.word = es.suggested_word
        GROUP BY es.mistyped_word, es.suggested_word
+       HAVING COUNT(*) >= 2
        ORDER BY count DESC, score DESC
        LIMIT ?`
     )

@@ -54,6 +54,7 @@ function isMacAccessibilityOk(): boolean {
 function broadcastStats(): void {
   if (!mainWindow || mainWindow.isDestroyed() || !monitor) return
   const { wpm, lastError } = monitor.getLiveStats()
+  const sessionAvgWpm = monitor.sessionAverageWpm()
   const errors = recentErrors(5).map((r) => ({
     mistyped_word: r.mistyped_word,
     corrected_word: r.corrected_word || '—',
@@ -65,6 +66,7 @@ function broadcastStats(): void {
   const mistakeDetails = topMistakeDetails(10)
   mainWindow.webContents.send('typerr:stats', {
     wpm,
+    sessionAvgWpm,
     lastError,
     recentErrors: errors,
     suggestedCorrections: suggestions,
@@ -405,6 +407,7 @@ app.whenReady().then(() => {
     if (!monitor) {
       return {
         wpm: 0,
+        sessionAvgWpm: 0,
         lastError: null,
         recentErrors: [] as unknown[],
         suggestedCorrections: [],
@@ -413,6 +416,7 @@ app.whenReady().then(() => {
       }
     }
     const { wpm, lastError } = monitor.getLiveStats()
+    const sessionAvgWpm = monitor.sessionAverageWpm()
     const errors = recentErrors(5).map((r) => ({
       mistyped_word: r.mistyped_word,
       corrected_word: r.corrected_word || '—',
@@ -424,6 +428,7 @@ app.whenReady().then(() => {
     const mistakeDetails = topMistakeDetails(10)
     return {
       wpm,
+      sessionAvgWpm,
       lastError,
       recentErrors: errors,
       suggestedCorrections: suggestions,

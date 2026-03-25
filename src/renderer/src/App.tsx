@@ -23,6 +23,7 @@ export default function App(): React.JSX.Element {
 
   const [stats, setStats] = useState<TyperrStatsPayload>({
     wpm: 0,
+    sessionAvgWpm: 0,
     lastError: null,
     recentErrors: [],
     suggestedCorrections: [],
@@ -51,7 +52,9 @@ export default function App(): React.JSX.Element {
     const off = window.typerr.onStats((payload) => {
       setStats(payload)
       setLastStatsAt(Date.now())
-      setWpmHistory((previous) => [...previous.slice(-29), payload.wpm])
+      if (payload.wpm > 0) {
+        setWpmHistory((previous) => [...previous.slice(-29), payload.wpm])
+      }
     })
     return off
   }, [])

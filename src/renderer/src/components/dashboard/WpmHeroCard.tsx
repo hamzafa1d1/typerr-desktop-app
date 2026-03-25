@@ -36,7 +36,7 @@ export function WpmHeroCard({ wpm, lastStatsAt, wpmHistory }: WpmHeroCardProps):
               </motion.div>
               <CardTitle className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-semibold">Typing Speed</CardTitle>
             </div>
-            <p className="text-[0.65rem] text-muted-foreground font-medium">60-second rolling average</p>
+            <p className="text-[0.65rem] text-muted-foreground font-medium">Live rolling average</p>
           </div>
         </CardHeader>
 

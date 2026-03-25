@@ -1,15 +1,19 @@
-import { appendFileSync, mkdirSync } from 'fs'
+import { appendFileSync, chmodSync, existsSync, mkdirSync } from 'fs'
 import { Notification, app } from 'electron'
 import { GlobalKeyboardListener } from 'node-global-key-listener'
 import { join } from 'path'
 import { getMasteredWord, insertError, insertMasteredWord, insertSuggestion } from './db'
 import { isDictionaryWord, normalizeWord, suggestWord } from './word-suggestions'
 
-const WINDOW_MS = 60_000
 const CHARS_PER_WORD = 5
+// Sliding window used to compute the current WPM when actively typing
+const ACTIVE_WINDOW_MS = 15_000
+// After this many ms of silence the user is considered idle and WPM returns to 0
+const IDLE_THRESHOLD_MS = 3_000
 const KEY_BUFFER_MAX = 20
 const DICTIONARY_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
 const MIN_SUGGESTION_SCORE = 0.78
+const MAC_KEY_SERVER_REL_PATH = 'node_modules/node-global-key-listener/bin/MacKeyServer'
 
 type DownMap = Record<string, boolean>
 
@@ -75,6 +79,7 @@ export class TypingMonitor {
   private notifiedWords = new Map<string, number>()
   private cachedDefinitions = new Set<string>()
   private wpmSamples: number[] = []
+  private lastKeypressAt = 0
   private running = false
 
   constructor() {
@@ -85,6 +90,7 @@ export class TypingMonitor {
 
   start(): void {
     if (this.running) return
+    this.ensureMacKeyServerExecutable()
     this.running = true
     this.listener = new GlobalKeyboardListener({
       mac: { onError: (code) => console.error('[Typerr] key listener mac error', code) },
@@ -100,6 +106,22 @@ export class TypingMonitor {
     })
   }
 
+  private ensureMacKeyServerExecutable(): void {
+    if (process.platform !== 'darwin') return
+    const helperPath = join(process.cwd(), MAC_KEY_SERVER_REL_PATH)
+    if (!existsSync(helperPath)) return
+
+    try {
+      chmodSync(helperPath, 0o755)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[Typerr] failed to set MacKeyServer executable bit', {
+        helperPath,
+        message
+      })
+    }
+  }
+
   stop(): void {
     this.running = false
     this.listener?.kill()
@@ -108,10 +130,21 @@ export class TypingMonitor {
 
   getLiveStats(): LiveStats {
     const now = Date.now()
-    this.charTimestamps = this.charTimestamps.filter((t) => now - t <= WINDOW_MS)
-    const chars = this.charTimestamps.length
-    const wordsInWindow = chars / CHARS_PER_WORD
-    const wpm = Math.round(wordsInWindow)
+
+    // Purge timestamps older than the active window to keep the array bounded
+    this.charTimestamps = this.charTimestamps.filter((t) => now - t <= ACTIVE_WINDOW_MS)
+
+    // If the user has not pressed a key recently they are idle — return 0 immediately
+    // without polluting the session average with dead time
+    const idle = this.lastKeypressAt === 0 || now - this.lastKeypressAt > IDLE_THRESHOLD_MS
+    if (idle) {
+      return { wpm: 0, lastError: this.lastError }
+    }
+
+    // Scale chars-in-window to a per-minute rate
+    const wpm = Math.round(
+      (this.charTimestamps.length / CHARS_PER_WORD) * (60_000 / ACTIVE_WINDOW_MS)
+    )
 
     this.wpmSamples.push(wpm)
     if (this.wpmSamples.length > 120) this.wpmSamples.shift()
@@ -146,6 +179,7 @@ export class TypingMonitor {
       }
       if (name === 'SPACE') {
         this.charTimestamps.push(now)
+        this.lastKeypressAt = now
       }
       return
     }
@@ -153,6 +187,7 @@ export class TypingMonitor {
     if (!isPrintableKey(name)) return
 
     this.charTimestamps.push(now)
+    this.lastKeypressAt = now
 
     const lc = letterChar(name, down)
     if (lc) {
@@ -179,10 +214,15 @@ export class TypingMonitor {
     const normalized = normalizeWord(candidate)
     const corrected = ''
     const suggestion = normalized ? suggestWord(normalized) : null
+    // Only track when:
+    //  1. The word normalizes (letters-only, 3-20 chars)
+    //  2. The mistyped word is NOT itself a valid English word (avoids tracking intentional backspaces)
+    //  3. A high-confidence dictionary correction exists
     const shouldTrack =
       !!normalized &&
-      (isDictionaryWord(normalized) ||
-        (!!suggestion && suggestion.score >= MIN_SUGGESTION_SCORE))
+      !isDictionaryWord(normalized) &&
+      !!suggestion &&
+      suggestion.score >= MIN_SUGGESTION_SCORE
 
     if (shouldTrack && normalized) {
       this.lastError = {
@@ -196,7 +236,7 @@ export class TypingMonitor {
 
       if (suggestion && suggestion.score >= MIN_SUGGESTION_SCORE) {
         insertSuggestion(normalized, suggestion.suggested, suggestion.score, suggestion.method)
-        void this.ensureDefinition(suggestion.suggested)
+        void this.ensureDefinition(suggestion.suggested, normalized)
       }
 
       this.trackCorrections(normalized, now)
@@ -255,12 +295,18 @@ export class TypingMonitor {
         return
       }
       const data = (await res.json()) as Array<{
-        meanings?: Array<{ definitions?: Array<{ definition?: string }> }>
+        meanings?: Array<{
+          partOfSpeech?: string
+          definitions?: Array<{ definition?: string; example?: string }>
+        }>
       }>
-      const def =
-        data[0]?.meanings?.[0]?.definitions?.[0]?.definition ?? 'No short definition returned.'
-      const tip = `Did you mean to type “${displayWord}” more carefully?`
-      this.showToast(displayWord, `${def}\n\n${tip}`)
+      const meaning = data[0]?.meanings?.[0]
+      const defEntry = meaning?.definitions?.[0]
+      const def = defEntry?.definition ?? 'No short definition returned.'
+      const partOfSpeech = meaning?.partOfSpeech ? ` (${meaning.partOfSpeech})` : ''
+      const example = defEntry?.example ? `\nExample: “${defEntry.example}”` : ''
+      const tip = `You keep correcting to “${displayWord}”${partOfSpeech}: ${def}${example}`
+      this.showToast(displayWord, tip)
       insertMasteredWord(key, def, tip)
     } catch (e) {
       console.error('[Typerr] dictionary fetch', e)
@@ -268,8 +314,8 @@ export class TypingMonitor {
     }
   }
 
-  private async ensureDefinition(word: string): Promise<void> {
-    const key = word.toLowerCase()
+  private async ensureDefinition(suggested: string, mistyped: string): Promise<void> {
+    const key = suggested.toLowerCase()
     if (this.cachedDefinitions.has(key)) return
     if (getMasteredWord(key)) {
       this.cachedDefinitions.add(key)
@@ -280,11 +326,21 @@ export class TypingMonitor {
       const res = await fetch(`${DICTIONARY_URL}${encodeURIComponent(key)}`)
       if (!res.ok) return
       const data = (await res.json()) as Array<{
-        meanings?: Array<{ definitions?: Array<{ definition?: string }> }>
+        meanings?: Array<{
+          partOfSpeech?: string
+          definitions?: Array<{ definition?: string; example?: string }>
+        }>
       }>
-      const def =
-        data[0]?.meanings?.[0]?.definitions?.[0]?.definition ?? 'Definition unavailable.'
-      insertMasteredWord(key, def, `Common correction for "${key}".`)
+
+      const entry = data[0]
+      const meaning = entry?.meanings?.[0]
+      const defEntry = meaning?.definitions?.[0]
+      const def = defEntry?.definition ?? 'Definition unavailable.'
+      const partOfSpeech = meaning?.partOfSpeech ? ` (${meaning.partOfSpeech})` : ''
+      const example = defEntry?.example ? ` Example: "${defEntry.example}."` : ''
+      const tip = `You typed "${mistyped}" — the correct word is "${key}"${partOfSpeech}.${example}`
+
+      insertMasteredWord(key, def, tip)
     } catch (e) {
       console.error('[Typerr] dictionary fetch', e)
     }

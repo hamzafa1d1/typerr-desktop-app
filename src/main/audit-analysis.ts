@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
-import { getDb, topSuggestions } from './db'
+import { getDb, topMistakeDetails } from './db'
 import type {
   AuditAnalysis,
   AuditAnalysisRequest,
@@ -75,17 +75,6 @@ function collectSnapshot(): AuditSnapshot {
     .prepare('SELECT COUNT(*) as count FROM errors WHERE timestamp >= ?')
     .get(hourAgo) as { count: number }
 
-  const topMistypedWords = db
-    .prepare(
-      `SELECT LOWER(mistyped_word) as word, COUNT(*) as count
-       FROM errors
-       WHERE LENGTH(TRIM(mistyped_word)) > 0
-       GROUP BY LOWER(mistyped_word)
-       ORDER BY count DESC
-       LIMIT 5`
-    )
-    .all() as Array<{ word: string; count: number }>
-
   const uniqueMistypedRow = db
     .prepare('SELECT COUNT(DISTINCT LOWER(mistyped_word)) as count FROM errors')
     .get() as { count: number }
@@ -104,9 +93,8 @@ function collectSnapshot(): AuditSnapshot {
     avgSessionWpm,
     correctionsLastHour: Number(correctionsLastHourRow.count || 0),
     uniqueMistypedWords: Number(uniqueMistypedRow.count || 0),
-    topMistypedWords,
     masteredWordsCount: Number(masteredWordsRow.count || 0),
-    suggestedCorrections: topSuggestions(6)
+    topMistakeDetails: topMistakeDetails(8)
   }
 }
 
@@ -128,7 +116,7 @@ async function llmAnalysis(
       correctionsLastHour: snapshot.correctionsLastHour,
       uniqueMistypedWords: snapshot.uniqueMistypedWords,
       masteredWordsCount: snapshot.masteredWordsCount,
-      topMistypedWordsCount: snapshot.topMistypedWords.length
+      topMistakeDetailsCount: snapshot.topMistakeDetails.length
     }
   })
 
@@ -147,16 +135,22 @@ async function llmAnalysis(
   const prompt = [
     'You are an expert typing coach.',
     'Analyze the JSON snapshot below and return a fully structured response.',
-    'Write directly to the user. Do not use phrases like "the user" or quote the snapshot values verbatim.',
+    'Write directly to the user ("you", not "the user"). Do not quote raw numbers verbatim — interpret them.',
     `Optional focus: ${request?.focus ?? 'none'}`,
     '',
     'Current snapshot:',
     JSON.stringify(snapshot, null, 2),
     ...improvementSection,
     '',
-    'For sessionMission: create one focused, measurable challenge based on the user\'s biggest weakness.',
-    'For drillWords: pick words from topMistypedWords (or common English words if list is empty). Give a short memory hint.',
-    'For nextActions: give 3-5 concrete steps with realistic time estimates in minutes.'
+    'Key instructions:',
+    '- topMistakeDetails contains real typos the user makes. Each entry has the mistyped word, the correct word,',
+    '  a dictionary definition of the correct word, and a contextual tip. Use this to give highly specific advice.',
+    '- For sessionMission: base the challenge directly on the top recurring mistakes. Be concrete and measurable.',
+    '- For drillWords: pull words from topMistakeDetails.suggested_word. Use the tip field to craft the hint.',
+    '  If topMistakeDetails is empty, pick 3-5 common English words that match the correction patterns.',
+    '- For nextActions: reference specific words from the mistakes list. Give realistic time estimates.',
+    '- For strengths/risks: derive them from patterns in the mistakes, WPM trend, and correction rate.',
+    '- Keep all text concise. Avoid generic advice that could apply to any typist.'
   ].join('\n')
 
   const responseSchema = {

@@ -1,17 +1,61 @@
 import { GoogleGenAI } from '@google/genai'
 import { getDb, topSuggestions } from './db'
-import type { AuditAnalysis, AuditAnalysisRequest, AuditSnapshot } from '../preload/typerr-types'
+import type {
+  AuditAnalysis,
+  AuditAnalysisRequest,
+  AuditSnapshot,
+  ChecklistAction,
+  DrillWord,
+  SessionMission
+} from '../preload/typerr-types'
 
 type ParsedInsight = {
   summary?: unknown
+  sessionMission?: unknown
   strengths?: unknown
   risks?: unknown
   nextActions?: unknown
+  drillWords?: unknown
+  improvementHighlights?: unknown
 }
 
 function toStringArray(value: unknown, max = 5): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((item): item is string => typeof item === 'string').slice(0, max)
+}
+
+function toActionArray(value: unknown, max = 5): ChecklistAction[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .map((item) => ({
+      action: typeof item['action'] === 'string' ? item['action'] : '',
+      durationMinutes: typeof item['durationMinutes'] === 'number' ? item['durationMinutes'] : 2
+    }))
+    .filter((item) => item.action.length > 0)
+    .slice(0, max)
+}
+
+function toDrillWordArray(value: unknown, max = 5): DrillWord[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .map((item) => ({
+      word: typeof item['word'] === 'string' ? item['word'] : '',
+      hint: typeof item['hint'] === 'string' ? item['hint'] : ''
+    }))
+    .filter((item) => item.word.length > 0)
+    .slice(0, max)
+}
+
+function toSessionMission(value: unknown): SessionMission | null {
+  if (typeof value !== 'object' || value === null) return null
+  const v = value as Record<string, unknown>
+  const title = typeof v['title'] === 'string' ? v['title'].trim() : ''
+  const objective = typeof v['objective'] === 'string' ? v['objective'].trim() : ''
+  const targetMetric = typeof v['targetMetric'] === 'string' ? v['targetMetric'].trim() : ''
+  if (!title || !objective) return null
+  return { title, objective, targetMetric: targetMetric || 'See objective above' }
 }
 
 function collectSnapshot(): AuditSnapshot {
@@ -21,8 +65,6 @@ function collectSnapshot(): AuditSnapshot {
     .prepare('SELECT average_wpm FROM sessions WHERE average_wpm IS NOT NULL ORDER BY id DESC LIMIT 50')
     .all() as Array<{ average_wpm: number }>
 
-  // Determine whether the errors.timestamp column stores ms or seconds.
-  // We sample one row and check the magnitude — ms timestamps are ~13 digits, s are ~10.
   const sampleRow = db.prepare('SELECT timestamp FROM errors ORDER BY id DESC LIMIT 1').get() as
     | { timestamp: number }
     | undefined
@@ -74,9 +116,12 @@ async function llmAnalysis(
   apiKey: string,
   modelName: string
 ): Promise<AuditAnalysis> {
+  const hasPreviousSnapshot = Boolean(request?.previousSnapshot)
+
   console.info('[Typerr] gemini request: start', {
     modelName,
     focus: request?.focus ?? 'none',
+    hasPreviousSnapshot,
     snapshotSummary: {
       sessionsTracked: snapshot.sessionsTracked,
       avgSessionWpm: snapshot.avgSessionWpm,
@@ -87,14 +132,31 @@ async function llmAnalysis(
     }
   })
 
+  const improvementSection = hasPreviousSnapshot
+    ? [
+        '',
+        'Previous snapshot (from the user\'s last report):',
+        JSON.stringify(request!.previousSnapshot, null, 2),
+        '',
+        'Compare the two snapshots and fill improvementHighlights with 2-4 specific, measurable improvements.',
+        'Examples: "WPM up from 42 → 48", "Corrections dropped by 5 in the last hour", "3 new words mastered".',
+        'Only mention genuine improvements. If nothing improved, return an empty array.'
+      ]
+    : ['', 'No previous snapshot available. Return an empty array for improvementHighlights.']
+
   const prompt = [
     'You are an expert typing coach.',
-    'Analyze the JSON snapshot below and return a structured response.',
-    'Write directly to the user. Do not use phrases like "user said" or quote the user.',
+    'Analyze the JSON snapshot below and return a fully structured response.',
+    'Write directly to the user. Do not use phrases like "the user" or quote the snapshot values verbatim.',
     `Optional focus: ${request?.focus ?? 'none'}`,
     '',
-    'Snapshot:',
-    JSON.stringify(snapshot, null, 2)
+    'Current snapshot:',
+    JSON.stringify(snapshot, null, 2),
+    ...improvementSection,
+    '',
+    'For sessionMission: create one focused, measurable challenge based on the user\'s biggest weakness.',
+    'For drillWords: pick words from topMistypedWords (or common English words if list is empty). Give a short memory hint.',
+    'For nextActions: give 3-5 concrete steps with realistic time estimates in minutes.'
   ].join('\n')
 
   const responseSchema = {
@@ -103,33 +165,79 @@ async function llmAnalysis(
     properties: {
       summary: {
         type: 'string',
-        description: 'Concise summary of the typing snapshot.'
+        description: 'Concise 2-3 sentence summary of the typing snapshot written directly to the user.'
+      },
+      sessionMission: {
+        type: 'object',
+        description: 'A single focused challenge for this session based on the user\'s biggest weakness.',
+        properties: {
+          title: {
+            type: 'string',
+            description: 'Short challenge title, max 6 words. E.g. "Zero Corrections for 5 Minutes".'
+          },
+          objective: {
+            type: 'string',
+            description: 'One sentence describing exactly what to do this session.'
+          },
+          targetMetric: {
+            type: 'string',
+            description: 'Specific measurable target. E.g. "< 1 correction/min for 5 minutes".'
+          }
+        },
+        required: ['title', 'objective', 'targetMetric']
+      },
+      improvementHighlights: {
+        type: 'array',
+        description: 'Specific improvements vs the previous snapshot. Empty array if no previous snapshot.',
+        items: { type: 'string' },
+        maxItems: 4
       },
       strengths: {
         type: 'array',
         description: 'Key strengths detected in the snapshot.',
         items: { type: 'string' },
         minItems: 1,
-        maxItems: 5
+        maxItems: 4
       },
       risks: {
         type: 'array',
         description: 'Risks or issues to address next.',
         items: { type: 'string' },
         minItems: 1,
+        maxItems: 4
+      },
+      drillWords: {
+        type: 'array',
+        description: '3-5 specific words the user should practice this session.',
+        items: {
+          type: 'object',
+          properties: {
+            word: { type: 'string', description: 'The word to practice.' },
+            hint: { type: 'string', description: 'Short memory tip for typing it correctly, max 10 words.' }
+          },
+          required: ['word', 'hint']
+        },
+        minItems: 1,
         maxItems: 5
       },
       nextActions: {
         type: 'array',
-        description: 'Actionable steps to improve typing.',
-        items: { type: 'string' },
+        description: '3-5 actionable steps to improve typing with estimated durations.',
+        items: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', description: 'The actionable step.' },
+            durationMinutes: { type: 'number', description: 'Realistic estimated time in minutes (1-15).' }
+          },
+          required: ['action', 'durationMinutes']
+        },
         minItems: 1,
         maxItems: 5
       }
     },
-    required: ['summary', 'strengths', 'risks', 'nextActions'],
+    required: ['summary', 'sessionMission', 'improvementHighlights', 'strengths', 'risks', 'drillWords', 'nextActions'],
     additionalProperties: false,
-    propertyOrdering: ['summary', 'strengths', 'risks', 'nextActions']
+    propertyOrdering: ['summary', 'sessionMission', 'improvementHighlights', 'strengths', 'risks', 'drillWords', 'nextActions']
   }
 
   const client = new GoogleGenAI({ apiKey })
@@ -169,15 +277,20 @@ async function llmAnalysis(
   }
 
   const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : ''
-  const strengths = toStringArray(parsed.strengths)
-  const risks = toStringArray(parsed.risks)
-  const nextActions = toStringArray(parsed.nextActions)
+  const sessionMission = toSessionMission(parsed.sessionMission)
+  const strengths = toStringArray(parsed.strengths, 4)
+  const risks = toStringArray(parsed.risks, 4)
+  const nextActions = toActionArray(parsed.nextActions)
+  const drillWords = toDrillWordArray(parsed.drillWords)
+  const improvementHighlights = toStringArray(parsed.improvementHighlights, 4)
 
   const missing: string[] = []
   if (!summary) missing.push('summary')
+  if (!sessionMission) missing.push('sessionMission')
   if (strengths.length === 0) missing.push('strengths')
   if (risks.length === 0) missing.push('risks')
   if (nextActions.length === 0) missing.push('nextActions')
+  if (drillWords.length === 0) missing.push('drillWords')
 
   if (missing.length > 0) {
     throw new Error(`Gemini JSON missing required fields: ${missing.join(', ')}`)
@@ -185,9 +298,12 @@ async function llmAnalysis(
 
   return {
     summary,
+    sessionMission: sessionMission!,
     strengths,
     risks,
     nextActions,
+    drillWords,
+    improvementHighlights,
     generatedBy: 'gemini-api',
     model: modelName,
     snapshot

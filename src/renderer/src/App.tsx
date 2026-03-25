@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import type { AuditAnalysis, TyperrStatsPayload } from '../../preload/typerr-types'
+import type { AuditAnalysis, AuditSnapshot, TyperrStatsPayload } from '../../preload/typerr-types'
 import { AppHeader } from '@/components/dashboard/AppHeader'
 import { DailyProgressChart } from '@/components/dashboard/DailyProgressChart'
 import { FeedbackHubCard } from '@/components/dashboard/FeedbackHubCard'
@@ -64,8 +64,18 @@ export default function App(): React.JSX.Element {
     setAnalysisLoading(true)
     setAnalysisError(null)
     try {
-      const result = await window.typerr.analyzeAudit()
+      let previousSnapshot: AuditSnapshot | undefined
+      try {
+        const stored = window.localStorage.getItem('typerr-last-snapshot')
+        if (stored) previousSnapshot = JSON.parse(stored) as AuditSnapshot
+      } catch { /* ignore corrupt storage */ }
+
+      const result = await window.typerr.analyzeAudit({ previousSnapshot })
       setAnalysis(result)
+
+      try {
+        window.localStorage.setItem('typerr-last-snapshot', JSON.stringify(result.snapshot))
+      } catch { /* ignore storage errors */ }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to analyze audit data.'
       setAnalysisError(message)

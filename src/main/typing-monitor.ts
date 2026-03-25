@@ -13,7 +13,10 @@ const IDLE_THRESHOLD_MS = 3_000
 const KEY_BUFFER_MAX = 20
 const DICTIONARY_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
 const MIN_SUGGESTION_SCORE = 0.78
-const MAC_KEY_SERVER_REL_PATH = 'node_modules/node-global-key-listener/bin/MacKeyServer'
+const KEY_SERVER_REL_PATHS: Partial<Record<NodeJS.Platform, string>> = {
+  darwin: 'node_modules/node-global-key-listener/bin/MacKeyServer',
+  linux: 'node_modules/node-global-key-listener/bin/X11KeyServer'
+}
 
 type DownMap = Record<string, boolean>
 
@@ -90,33 +93,48 @@ export class TypingMonitor {
 
   start(): void {
     if (this.running) return
-    this.ensureMacKeyServerExecutable()
-    this.running = true
-    this.listener = new GlobalKeyboardListener({
-      mac: { onError: (code) => console.error('[Typerr] key listener mac error', code) },
-      windows: {
-        onError: (code) => console.error('[Typerr] key listener windows error', code)
-      }
-    })
+    this.ensurePlatformKeyServerExecutable()
 
-    this.listener.addListener((e, down) => {
-      if (e.state !== 'DOWN' || !e.name) return
-      this.pushKeyBuffer(e.name)
-      this.handleKey(e.name, down)
-    })
+    try {
+      this.listener = new GlobalKeyboardListener({
+        mac: { onError: (code) => console.error('[Typerr] key listener mac error', code) },
+        windows: {
+          onError: (code) => console.error('[Typerr] key listener windows error', code)
+        }
+      })
+
+      this.listener.addListener((e, down) => {
+        if (e.state !== 'DOWN' || !e.name) return
+        this.pushKeyBuffer(e.name)
+        this.handleKey(e.name, down)
+      })
+
+      this.running = true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[Typerr] failed to start global keyboard listener', {
+        platform: process.platform,
+        message
+      })
+      this.listener = null
+      this.running = false
+    }
   }
 
-  private ensureMacKeyServerExecutable(): void {
-    if (process.platform !== 'darwin') return
-    const helperPath = join(process.cwd(), MAC_KEY_SERVER_REL_PATH)
+  private ensurePlatformKeyServerExecutable(): void {
+    const helperRelPath = KEY_SERVER_REL_PATHS[process.platform]
+    if (!helperRelPath) return
+
+    const helperPath = join(process.cwd(), helperRelPath)
     if (!existsSync(helperPath)) return
 
     try {
       chmodSync(helperPath, 0o755)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.error('[Typerr] failed to set MacKeyServer executable bit', {
+      console.error('[Typerr] failed to set key server executable bit', {
         helperPath,
+        platform: process.platform,
         message
       })
     }

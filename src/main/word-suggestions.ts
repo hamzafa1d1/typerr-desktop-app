@@ -12,11 +12,26 @@ function bucketKey(prefix: string, length: number): string {
   return `${prefix}:${length}`
 }
 
+function resolveWordListPath(): string {
+  if (typeof wordListPath === 'string') return wordListPath
+  const withDefault = wordListPath as { default?: unknown }
+  if (withDefault && typeof withDefault.default === 'string') return withDefault.default
+  const withPath = wordListPath as { path?: unknown }
+  if (withPath && typeof withPath.path === 'string') return withPath.path
+  return ''
+}
+
 function loadDictionary(): void {
   if (dictionaryLoaded) return
   dictionaryLoaded = true
 
-  const raw = readFileSync(wordListPath, 'utf8')
+  const resolvedPath = resolveWordListPath()
+  if (!resolvedPath) {
+    console.error('[Typerr] word-list path unavailable; dictionary suggestions disabled.')
+    return
+  }
+
+  const raw = readFileSync(resolvedPath, 'utf8')
   const words = raw.split('\n')
   for (const word of words) {
     const w = word.trim().toLowerCase()

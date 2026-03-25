@@ -26,6 +26,7 @@ import {
   topSuggestions
 } from './db'
 import { analyzeAudit } from './audit-analysis'
+import { shutdownUsageAnalytics, trackInstallAndLaunch } from './usage-analytics'
 
 const ACCESSIBILITY_URL =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
@@ -387,6 +388,8 @@ function waitForAccessibilityThenStart(): void {
 app.whenReady().then(() => {
   app.setName('Typerr')
 
+  void trackInstallAndLaunch()
+
   if (process.platform === 'win32') {
     app.setAppUserModelId(!app.isPackaged ? process.execPath : 'com.typerr.app')
   }
@@ -466,6 +469,7 @@ app.on('before-quit', () => {
   if (sessionId) {
     endSession(sessionId, avg)
   }
+  void shutdownUsageAnalytics()
   closeDb()
 })
 

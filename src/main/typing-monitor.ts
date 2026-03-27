@@ -8,6 +8,8 @@ import { isDictionaryWord, normalizeWord, suggestWord } from './word-suggestions
 const CHARS_PER_WORD = 5
 // Sliding window used to compute the current WPM when actively typing
 const ACTIVE_WINDOW_MS = 15_000
+// Require a short continuous typing burst before reporting a new live WPM
+const MIN_ACTIVE_TYPING_MS = 2_000
 // After this many ms of silence the user is considered idle and WPM returns to 0
 const IDLE_THRESHOLD_MS = 3_000
 const KEY_BUFFER_MAX = 20
@@ -82,6 +84,8 @@ export class TypingMonitor {
   private notifiedWords = new Map<string, number>()
   private cachedDefinitions = new Set<string>()
   private wpmSamples: number[] = []
+  private lastLiveWpm = 0
+  private activeTypingStartedAt = 0
   private lastKeypressAt = 0
   private running = false
 
@@ -152,11 +156,20 @@ export class TypingMonitor {
     // Purge timestamps older than the active window to keep the array bounded
     this.charTimestamps = this.charTimestamps.filter((t) => now - t <= ACTIVE_WINDOW_MS)
 
-    // If the user has not pressed a key recently they are idle — return 0 immediately
-    // without polluting the session average with dead time
+    // If the user is idle, keep the most recent active WPM instead of dropping to 0.
+    // This reflects typing pace during active periods only.
     const idle = this.lastKeypressAt === 0 || now - this.lastKeypressAt > IDLE_THRESHOLD_MS
     if (idle) {
-      return { wpm: 0, lastError: this.lastError }
+      this.activeTypingStartedAt = 0
+      return { wpm: this.lastLiveWpm, lastError: this.lastError }
+    }
+
+    // Stabilize live WPM: require a short continuous typing burst before recalculating.
+    if (this.activeTypingStartedAt === 0) {
+      this.activeTypingStartedAt = this.lastKeypressAt
+    }
+    if (now - this.activeTypingStartedAt < MIN_ACTIVE_TYPING_MS) {
+      return { wpm: this.lastLiveWpm, lastError: this.lastError }
     }
 
     // Scale chars-in-window to a per-minute rate
@@ -164,6 +177,7 @@ export class TypingMonitor {
       (this.charTimestamps.length / CHARS_PER_WORD) * (60_000 / ACTIVE_WINDOW_MS)
     )
 
+    this.lastLiveWpm = wpm
     this.wpmSamples.push(wpm)
     if (this.wpmSamples.length > 120) this.wpmSamples.shift()
 
@@ -186,26 +200,30 @@ export class TypingMonitor {
     const now = Date.now()
 
     if (name === 'BACKSPACE') {
+      this.markTypingActivity(now)
       this.onBackspace(now)
       return
     }
 
     if (name === 'SPACE' || name === 'RETURN' || name === 'TAB') {
+      if (this.currentWord.length > 0) {
+        this.trackWordCandidate(this.currentWord, now)
+      }
       if ((name === 'SPACE' || name === 'RETURN') && this.currentWord.length > 0) {
         this.lastCompletedWord = this.currentWord
         this.currentWord = ''
       }
       if (name === 'SPACE') {
         this.charTimestamps.push(now)
-        this.lastKeypressAt = now
       }
+      this.markTypingActivity(now)
       return
     }
 
     if (!isPrintableKey(name)) return
 
     this.charTimestamps.push(now)
-    this.lastKeypressAt = now
+    this.markTypingActivity(now)
 
     const lc = letterChar(name, down)
     if (lc) {
@@ -220,21 +238,22 @@ export class TypingMonitor {
     if (sc) this.currentWord += sc
   }
 
-  private onBackspace(now: number): void {
-    const candidate = this.currentWord.length > 0 ? this.currentWord : this.lastCompletedWord
-    if (candidate.length < 2) {
-      if (this.currentWord.length > 0) {
-        this.currentWord = this.currentWord.slice(0, -1)
-      }
-      return
+  private markTypingActivity(now: number): void {
+    if (this.lastKeypressAt === 0 || now - this.lastKeypressAt > IDLE_THRESHOLD_MS) {
+      this.activeTypingStartedAt = now
     }
+    this.lastKeypressAt = now
+  }
+
+  private trackWordCandidate(candidate: string, now: number): void {
+    if (candidate.length < 2) return
 
     const normalized = normalizeWord(candidate)
     const corrected = ''
     const suggestion = normalized ? suggestWord(normalized) : null
     // Only track when:
     //  1. The word normalizes (letters-only, 3-20 chars)
-    //  2. The mistyped word is NOT itself a valid English word (avoids tracking intentional backspaces)
+    //  2. The mistyped word is NOT itself a valid English word (avoids tracking intentional edits)
     //  3. A high-confidence dictionary correction exists
     const shouldTrack =
       !!normalized &&
@@ -242,23 +261,26 @@ export class TypingMonitor {
       !!suggestion &&
       suggestion.score >= MIN_SUGGESTION_SCORE
 
-    if (shouldTrack && normalized) {
-      this.lastError = {
-        mistyped_word: normalized,
-        corrected_word: corrected,
-        timestamp: now
-      }
+    if (!shouldTrack || !normalized || !suggestion) return
 
-      insertError(normalized, corrected || null, now)
-      this.appendJsonl({ mistyped_word: normalized, corrected_word: corrected, timestamp: now })
-
-      if (suggestion && suggestion.score >= MIN_SUGGESTION_SCORE) {
-        insertSuggestion(normalized, suggestion.suggested, suggestion.score, suggestion.method)
-        void this.ensureDefinition(suggestion.suggested, normalized)
-      }
-
-      this.trackCorrections(normalized, now)
+    this.lastError = {
+      mistyped_word: normalized,
+      corrected_word: corrected,
+      timestamp: now
     }
+
+    insertError(normalized, corrected || null, now)
+    this.appendJsonl({ mistyped_word: normalized, corrected_word: corrected, timestamp: now })
+
+    insertSuggestion(normalized, suggestion.suggested, suggestion.score, suggestion.method)
+    void this.ensureDefinition(suggestion.suggested, normalized)
+
+    this.trackCorrections(normalized, now)
+  }
+
+  private onBackspace(now: number): void {
+    const candidate = this.currentWord.length > 0 ? this.currentWord : this.lastCompletedWord
+    this.trackWordCandidate(candidate, now)
 
     if (this.currentWord.length > 0) {
       this.currentWord = this.currentWord.slice(0, -1)

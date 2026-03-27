@@ -129,19 +129,22 @@ export function topMistakeDetails(limit: number): Array<{
   definition: string | null
   tip: string | null
 }> {
-  return getDb()
+  const db = getDb()
+
+  const recurring = db
     .prepare(
       `SELECT es.mistyped_word,
               es.suggested_word,
               AVG(es.score) as score,
               COUNT(*) as count,
               mw.definition as definition,
-              mw.tip as tip
+              mw.tip as tip,
+              MAX(es.created_at) as last_seen
        FROM error_suggestions es
        LEFT JOIN mastered_words mw ON mw.word = es.suggested_word
        GROUP BY es.mistyped_word, es.suggested_word
        HAVING COUNT(*) >= 2
-       ORDER BY count DESC, score DESC
+       ORDER BY count DESC, score DESC, last_seen DESC
        LIMIT ?`
     )
     .all(limit) as Array<{
@@ -151,7 +154,66 @@ export function topMistakeDetails(limit: number): Array<{
       count: number
       definition: string | null
       tip: string | null
+      last_seen: number
     }>
+
+  if (recurring.length >= limit) {
+    return recurring.map((row) => ({
+      mistyped_word: row.mistyped_word,
+      suggested_word: row.suggested_word,
+      score: row.score,
+      count: row.count,
+      definition: row.definition,
+      tip: row.tip
+    }))
+  }
+
+  const seen = new Set(recurring.map((row) => `${row.mistyped_word}::${row.suggested_word}`))
+  const remaining = limit - recurring.length
+
+  const singles = db
+    .prepare(
+      `SELECT es.mistyped_word,
+              es.suggested_word,
+              AVG(es.score) as score,
+              COUNT(*) as count,
+              mw.definition as definition,
+              mw.tip as tip,
+              MAX(es.created_at) as last_seen
+       FROM error_suggestions es
+       LEFT JOIN mastered_words mw ON mw.word = es.suggested_word
+       GROUP BY es.mistyped_word, es.suggested_word
+       HAVING COUNT(*) = 1
+       ORDER BY last_seen DESC, score DESC
+       LIMIT ?`
+    )
+    .all(remaining * 4) as Array<{
+      mistyped_word: string
+      suggested_word: string
+      score: number
+      count: number
+      definition: string | null
+      tip: string | null
+      last_seen: number
+    }>
+
+  const result = [...recurring]
+  for (const row of singles) {
+    const key = `${row.mistyped_word}::${row.suggested_word}`
+    if (seen.has(key)) continue
+    result.push(row)
+    seen.add(key)
+    if (result.length >= limit) break
+  }
+
+  return result.map((row) => ({
+    mistyped_word: row.mistyped_word,
+    suggested_word: row.suggested_word,
+    score: row.score,
+    count: row.count,
+    definition: row.definition,
+    tip: row.tip
+  }))
 }
 
 export function correctionsSince(timestamp: number): number {

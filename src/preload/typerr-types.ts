@@ -20,6 +20,32 @@ export type TyperrMistakeDetailRow = {
   tip: string | null
 }
 
+export type TyperrFinger = 'thumb' | 'index' | 'middle' | 'ring' | 'pinky' | 'unknown'
+
+export type TyperrHand = 'left' | 'right' | 'thumb' | 'unknown'
+
+export type TyperrKeyboardKeyStat = {
+  key: string
+  presses: number
+  mistakes: number
+  errorRate: number
+  hand: TyperrHand
+  finger: TyperrFinger
+}
+
+export type TyperrKeyboardInsights = {
+  totalPresses: number
+  totalMistakes: number
+  handUsage: {
+    left: number
+    right: number
+    thumb: number
+  }
+  handBalanceScore: number
+  topMistakeKeys: TyperrKeyboardKeyStat[]
+  keyStats: TyperrKeyboardKeyStat[]
+}
+
 export type TyperrStatsPayload = {
   wpm: number
   sessionAvgWpm: number
@@ -28,6 +54,7 @@ export type TyperrStatsPayload = {
   suggestedCorrections: TyperrSuggestionRow[]
   correctionsLastHour: number
   mistakeDetails: TyperrMistakeDetailRow[]
+  keyboardInsights: TyperrKeyboardInsights
 }
 
 export type AuditMistakeDetail = {

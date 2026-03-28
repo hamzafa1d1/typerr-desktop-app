@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, Activity, TrendingUp, Clock, Sparkles, MessageSquareText } from 'lucide-react'
+import { BarChart3, Activity, Clock, Sparkles, MessageSquareText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type NavItem = {
@@ -16,7 +16,7 @@ export function Sidebar() {
       { id: 'kpis', label: 'KPIs', icon: Activity },
       { id: 'feedback', label: 'Feedback Hub', icon: MessageSquareText },
       { id: 'focus', label: 'Focus Plan', icon: Clock },
-      { id: 'progress', label: 'Progress', icon: TrendingUp }
+      { id: 'keyboard', label: 'Keyboard Map', icon: Activity }
     ],
     []
   )

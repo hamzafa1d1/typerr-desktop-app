@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { AuditAnalysis, AuditSnapshot, TyperrStatsPayload } from '../../preload/typerr-types'
 import { AppHeader } from '@/components/dashboard/AppHeader'
-import { DailyProgressChart } from '@/components/dashboard/DailyProgressChart'
 import { FeedbackHubCard } from '@/components/dashboard/FeedbackHubCard'
 import { ImprovementFocusCard } from '@/components/dashboard/ImprovementFocusCard'
+import { KeyboardMistakeMapCard } from '@/components/dashboard/KeyboardMistakeMapCard'
 import { KpiGrid } from '@/components/dashboard/KpiGrid'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { SkillSignalsCard } from '@/components/dashboard/SkillSignalsCard'
@@ -28,7 +28,19 @@ export default function App(): React.JSX.Element {
     recentErrors: [],
     suggestedCorrections: [],
     correctionsLastHour: 0,
-    mistakeDetails: []
+    mistakeDetails: [],
+    keyboardInsights: {
+      totalPresses: 0,
+      totalMistakes: 0,
+      handUsage: {
+        left: 0,
+        right: 0,
+        thumb: 0
+      },
+      handBalanceScore: 100,
+      topMistakeKeys: [],
+      keyStats: []
+    }
   })
   const [lastStatsAt, setLastStatsAt] = useState<number | null>(null)
   const [wpmHistory, setWpmHistory] = useState<number[]>([])
@@ -146,8 +158,8 @@ export default function App(): React.JSX.Element {
               <ImprovementFocusCard focus={focus} />
             </motion.section>
 
-            <motion.section id="progress" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">
-              <DailyProgressChart />
+            <motion.section id="keyboard" variants={itemVariants} className="xl:col-span-5 scroll-mt-24">
+              <KeyboardMistakeMapCard insights={stats.keyboardInsights} />
             </motion.section>
           </motion.div>
         ) : (
@@ -169,6 +181,9 @@ export default function App(): React.JSX.Element {
                 lastError={stats.lastError}
                 mistakeDetails={stats.mistakeDetails}
               />
+              <section id="keyboard" className="scroll-mt-24">
+                <KeyboardMistakeMapCard insights={stats.keyboardInsights} />
+              </section>
             </motion.section>
 
             <motion.aside id="kpis" variants={itemVariants} className="space-y-3 xl:col-span-4 scroll-mt-24">
@@ -179,10 +194,6 @@ export default function App(): React.JSX.Element {
                 suggestionsCount={stats.suggestedCorrections.length}
               />
             </motion.aside>
-
-            <motion.section id="progress" variants={itemVariants} className="xl:col-span-12 scroll-mt-24">
-              <DailyProgressChart />
-            </motion.section>
           </motion.div>
         )}
         </div>

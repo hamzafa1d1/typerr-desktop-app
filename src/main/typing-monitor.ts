@@ -4,6 +4,12 @@ import { GlobalKeyboardListener } from 'node-global-key-listener'
 import { join } from 'path'
 import { getMasteredWord, insertError, insertMasteredWord, insertSuggestion } from './db'
 import { isDictionaryWord, normalizeWord, suggestWord } from './word-suggestions'
+import type {
+  TyperrFinger,
+  TyperrHand,
+  TyperrKeyboardInsights,
+  TyperrKeyboardKeyStat
+} from '../preload/typerr-types'
 
 const CHARS_PER_WORD = 5
 // Sliding window used to compute the current WPM when actively typing
@@ -21,6 +27,7 @@ const KEY_SERVER_REL_PATHS: Partial<Record<NodeJS.Platform, string>> = {
 }
 
 type DownMap = Record<string, boolean>
+type KeyClass = { hand: TyperrHand; finger: TyperrFinger }
 
 export type LiveStats = {
   wpm: number
@@ -40,6 +47,72 @@ const SYM: Set<string> = new Set([
   'FORWARD SLASH',
   'BACKTICK'
 ])
+
+const UNKNOWN_KEY_CLASS: KeyClass = { hand: 'unknown', finger: 'unknown' }
+
+const KEY_CLASS: Record<string, KeyClass> = {
+  '1': { hand: 'left', finger: 'pinky' },
+  '2': { hand: 'left', finger: 'ring' },
+  '3': { hand: 'left', finger: 'middle' },
+  '4': { hand: 'left', finger: 'index' },
+  '5': { hand: 'left', finger: 'index' },
+  '6': { hand: 'right', finger: 'index' },
+  '7': { hand: 'right', finger: 'index' },
+  '8': { hand: 'right', finger: 'middle' },
+  '9': { hand: 'right', finger: 'ring' },
+  '0': { hand: 'right', finger: 'pinky' },
+  '-': { hand: 'right', finger: 'pinky' },
+  '=': { hand: 'right', finger: 'pinky' },
+  Q: { hand: 'left', finger: 'pinky' },
+  W: { hand: 'left', finger: 'ring' },
+  E: { hand: 'left', finger: 'middle' },
+  R: { hand: 'left', finger: 'index' },
+  T: { hand: 'left', finger: 'index' },
+  Y: { hand: 'right', finger: 'index' },
+  U: { hand: 'right', finger: 'index' },
+  I: { hand: 'right', finger: 'middle' },
+  O: { hand: 'right', finger: 'ring' },
+  P: { hand: 'right', finger: 'pinky' },
+  '[': { hand: 'right', finger: 'pinky' },
+  ']': { hand: 'right', finger: 'pinky' },
+  A: { hand: 'left', finger: 'pinky' },
+  S: { hand: 'left', finger: 'ring' },
+  D: { hand: 'left', finger: 'middle' },
+  F: { hand: 'left', finger: 'index' },
+  G: { hand: 'left', finger: 'index' },
+  H: { hand: 'right', finger: 'index' },
+  J: { hand: 'right', finger: 'index' },
+  K: { hand: 'right', finger: 'middle' },
+  L: { hand: 'right', finger: 'ring' },
+  ';': { hand: 'right', finger: 'pinky' },
+  "'": { hand: 'right', finger: 'pinky' },
+  '\\': { hand: 'right', finger: 'pinky' },
+  Z: { hand: 'left', finger: 'pinky' },
+  X: { hand: 'left', finger: 'ring' },
+  C: { hand: 'left', finger: 'middle' },
+  V: { hand: 'left', finger: 'index' },
+  B: { hand: 'left', finger: 'index' },
+  N: { hand: 'right', finger: 'index' },
+  M: { hand: 'right', finger: 'index' },
+  ',': { hand: 'right', finger: 'middle' },
+  '.': { hand: 'right', finger: 'ring' },
+  '/': { hand: 'right', finger: 'pinky' },
+  SPACE: { hand: 'thumb', finger: 'thumb' }
+}
+
+function keyClassFor(label: string): KeyClass {
+  return KEY_CLASS[label] ?? UNKNOWN_KEY_CLASS
+}
+
+function keyLabelFromKeyName(name: string, down: DownMap): string | null {
+  if (name === 'SPACE') return 'SPACE'
+  const lc = letterChar(name, down)
+  if (lc) return lc.toUpperCase()
+  if (/^[0-9]$/.test(name)) return name
+  const sc = symChar(name)
+  if (sc) return sc
+  return null
+}
 
 function isPrintableKey(name: string): boolean {
   if (name.length === 1 && /[A-Z0-9]/.test(name)) return true
@@ -83,6 +156,8 @@ export class TypingMonitor {
   private correctionEvents = new Map<string, number[]>()
   private notifiedWords = new Map<string, number>()
   private cachedDefinitions = new Set<string>()
+  private keyPressCounts = new Map<string, number>()
+  private keyMistakeCounts = new Map<string, number>()
   private wpmSamples: number[] = []
   private lastLiveWpm = 0
   private activeTypingStartedAt = 0
@@ -189,6 +264,58 @@ export class TypingMonitor {
     return Math.round(this.wpmSamples.reduce((a, b) => a + b, 0) / this.wpmSamples.length)
   }
 
+  getKeyboardInsights(): TyperrKeyboardInsights {
+    const keys = new Set<string>([
+      ...Array.from(this.keyPressCounts.keys()),
+      ...Array.from(this.keyMistakeCounts.keys())
+    ])
+
+    let totalPresses = 0
+    let totalMistakes = 0
+    const handUsage = { left: 0, right: 0, thumb: 0 }
+
+    const keyStats: TyperrKeyboardKeyStat[] = Array.from(keys).map((key) => {
+      const presses = this.keyPressCounts.get(key) ?? 0
+      const mistakes = this.keyMistakeCounts.get(key) ?? 0
+      totalPresses += presses
+      totalMistakes += mistakes
+
+      const keyClass = keyClassFor(key)
+      if (keyClass.hand === 'left') handUsage.left += presses
+      if (keyClass.hand === 'right') handUsage.right += presses
+      if (keyClass.hand === 'thumb') handUsage.thumb += presses
+
+      return {
+        key,
+        presses,
+        mistakes,
+        errorRate: presses > 0 ? mistakes / presses : mistakes > 0 ? 1 : 0,
+        hand: keyClass.hand,
+        finger: keyClass.finger
+      }
+    })
+
+    const topMistakeKeys = keyStats
+      .filter((row) => row.mistakes > 0)
+      .sort((a, b) => b.mistakes - a.mistakes || b.errorRate - a.errorRate)
+      .slice(0, 8)
+
+    const lrTotal = handUsage.left + handUsage.right
+    const handBalanceScore =
+      lrTotal === 0
+        ? 100
+        : Math.max(0, 100 - Math.round((Math.abs(handUsage.left - handUsage.right) / lrTotal) * 100))
+
+    return {
+      totalPresses,
+      totalMistakes,
+      handUsage,
+      handBalanceScore,
+      topMistakeKeys,
+      keyStats
+    }
+  }
+
   private pushKeyBuffer(name: string): void {
     this.keyNamesBuffer.push(name)
     if (this.keyNamesBuffer.length > KEY_BUFFER_MAX) {
@@ -215,6 +342,7 @@ export class TypingMonitor {
       }
       if (name === 'SPACE') {
         this.charTimestamps.push(now)
+        this.recordKeyPress(name, down)
       }
       this.markTypingActivity(now)
       return
@@ -224,6 +352,7 @@ export class TypingMonitor {
 
     this.charTimestamps.push(now)
     this.markTypingActivity(now)
+    this.recordKeyPress(name, down)
 
     const lc = letterChar(name, down)
     if (lc) {
@@ -243,6 +372,21 @@ export class TypingMonitor {
       this.activeTypingStartedAt = now
     }
     this.lastKeypressAt = now
+  }
+
+  private recordKeyPress(name: string, down: DownMap): void {
+    const key = keyLabelFromKeyName(name, down)
+    if (!key) return
+    const prev = this.keyPressCounts.get(key) ?? 0
+    this.keyPressCounts.set(key, prev + 1)
+  }
+
+  private recordMistakeKeys(word: string): void {
+    for (const ch of word.toUpperCase()) {
+      if (!/^[A-Z]$/.test(ch)) continue
+      const prev = this.keyMistakeCounts.get(ch) ?? 0
+      this.keyMistakeCounts.set(ch, prev + 1)
+    }
   }
 
   private trackWordCandidate(candidate: string, now: number): void {
@@ -275,6 +419,7 @@ export class TypingMonitor {
     insertSuggestion(normalized, suggestion.suggested, suggestion.score, suggestion.method)
     void this.ensureDefinition(suggestion.suggested, normalized)
 
+    this.recordMistakeKeys(normalized)
     this.trackCorrections(normalized, now)
   }
 

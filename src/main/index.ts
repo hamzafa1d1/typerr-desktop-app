@@ -27,6 +27,7 @@ import {
 } from './db'
 import { analyzeAudit } from './audit-analysis'
 import { shutdownUsageAnalytics, trackInstallAndLaunch } from './usage-analytics'
+import type { TyperrKeyboardInsights } from '../preload/typerr-types'
 
 const ACCESSIBILITY_URL =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
@@ -47,6 +48,21 @@ let coreStarted = false
 let spotlightMode = false
 let previousBounds: Electron.Rectangle | null = null
 
+function emptyKeyboardInsights(): TyperrKeyboardInsights {
+  return {
+    totalPresses: 0,
+    totalMistakes: 0,
+    handUsage: {
+      left: 0,
+      right: 0,
+      thumb: 0
+    },
+    handBalanceScore: 100,
+    topMistakeKeys: [],
+    keyStats: []
+  }
+}
+
 function isMacAccessibilityOk(): boolean {
   if (process.platform !== 'darwin') return true
   return systemPreferences.isTrustedAccessibilityClient(false)
@@ -55,6 +71,7 @@ function isMacAccessibilityOk(): boolean {
 function broadcastStats(): void {
   if (!mainWindow || mainWindow.isDestroyed() || !monitor) return
   const { wpm, lastError } = monitor.getLiveStats()
+  const keyboardInsights = monitor.getKeyboardInsights()
   const sessionAvgWpm = monitor.sessionAverageWpm()
   const errors = recentErrors(5).map((r) => ({
     mistyped_word: r.mistyped_word,
@@ -72,7 +89,8 @@ function broadcastStats(): void {
     recentErrors: errors,
     suggestedCorrections: suggestions,
     correctionsLastHour,
-    mistakeDetails
+    mistakeDetails,
+    keyboardInsights
   })
 }
 
@@ -415,10 +433,12 @@ app.whenReady().then(() => {
         recentErrors: [] as unknown[],
         suggestedCorrections: [],
         correctionsLastHour: 0,
-        mistakeDetails: []
+        mistakeDetails: [],
+        keyboardInsights: emptyKeyboardInsights()
       }
     }
     const { wpm, lastError } = monitor.getLiveStats()
+    const keyboardInsights = monitor.getKeyboardInsights()
     const sessionAvgWpm = monitor.sessionAverageWpm()
     const errors = recentErrors(5).map((r) => ({
       mistyped_word: r.mistyped_word,
@@ -436,7 +456,8 @@ app.whenReady().then(() => {
       recentErrors: errors,
       suggestedCorrections: suggestions,
       correctionsLastHour,
-      mistakeDetails
+      mistakeDetails,
+      keyboardInsights
     }
   })
 
